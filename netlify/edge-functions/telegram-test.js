@@ -1,10 +1,10 @@
-const TELEGRAM_TIMEOUT_MS = 8000;
+const REQUEST_TIMEOUT_MS = 6000;
 
-export default async () => {
+export default async (request) => {
   const botToken = Netlify.env.get("BOT_TOKEN");
-  const chatId = Netlify.env.get("CHAT_ID");
+  const mode = new URL(request.url).searchParams.get("mode");
 
-  if (!botToken || !chatId) {
+  if (!botToken) {
     return jsonResponse(500, {
       ok: false,
       stage: "config",
@@ -12,36 +12,37 @@ export default async () => {
     });
   }
 
+  const targets = {
+    control: "https://example.com/",
+    telegramRoot: "https://api.telegram.org/",
+    telegramBot: `https://api.telegram.org/bot${botToken.trim()}/getMe`
+  };
+  const target = targets[mode];
+
+  if (!target) {
+    return jsonResponse(400, {
+      ok: false,
+      stage: "input",
+      error: "Unknown diagnostic mode"
+    });
+  }
+
   try {
-    const response = await fetch(
-      `https://api.telegram.org/bot${botToken.trim()}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
-        body: JSON.stringify({
-          chat_id: chatId.trim(),
-          text: "Техническая проверка Netlify Edge"
-        })
-      }
-    );
+    const response = await fetch(target, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
 
-    const result = await response.json();
-
-    if (!response.ok || !result.ok) {
-      return jsonResponse(502, {
-        ok: false,
-        stage: "telegram",
-        errorCode: result.error_code || response.status,
-        error: result.description || "Telegram rejected the request"
-      });
-    }
-
-    return jsonResponse(200, { ok: true, stage: "complete" });
+    return jsonResponse(200, {
+      ok: true,
+      stage: "complete",
+      mode,
+      upstreamStatus: response.status
+    });
   } catch (error) {
     return jsonResponse(502, {
       ok: false,
       stage: "network",
+      mode,
       error: error?.name || "Network error"
     });
   }
