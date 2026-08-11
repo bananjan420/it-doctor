@@ -1,4 +1,10 @@
+const dns = require("node:dns");
+
 const TELEGRAM_API_BASE = "https://api.telegram.org";
+const TELEGRAM_TIMEOUT_MS = 10000;
+
+// Telegram IPv6 может быть недоступен из части serverless-регионов.
+dns.setDefaultResultOrder("ipv4first");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -53,6 +59,7 @@ exports.handler = async (event) => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
         body: JSON.stringify({
           chat_id: chatId,
           text: telegramMessage,
