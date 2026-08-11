@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="IT Доктор — профессиональный ремонт компьютеров, ноутбуков и телефонов. Гарантия, выезд, бесплатная диагностика. Починим за 1 день." />
+  <meta name="description" content="IT Доктор — профессиональный ремонт компьютеров, ноутбуков и телефонов. Гарантия, выезд, диагностика от 500 рублей. Починим за 1 день." />
   <meta name="keywords" content="ремонт компьютеров, ремонт телефонов, ремонт ноутбуков, IT Доктор, замена экрана, восстановление данных" />
   <title>IT Доктор — Ремонт компьютеров и телефонов за 1 день</title>
 
@@ -513,7 +513,9 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 32px 24px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
     }
 
@@ -521,6 +523,26 @@
       transform: translateY(-8px);
       box-shadow: var(--shadow-accent);
       border-color: rgba(0, 212, 255, 0.4);
+    }
+
+    .service-card__image {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-bottom: 1px solid var(--border);
+      transition: transform 0.5s ease, filter var(--transition);
+    }
+
+    .service-card:hover .service-card__image {
+      transform: scale(1.04);
+      filter: brightness(1.08);
+    }
+
+    .service-card__body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
     }
 
     .service-card__icon {
@@ -554,6 +576,14 @@
       color: var(--text-secondary);
       font-size: 0.9rem;
       line-height: 1.55;
+    }
+
+    .service-card__price {
+      margin-top: auto;
+      padding-top: 20px;
+      color: var(--accent);
+      font-size: 1.2rem;
+      font-weight: 800;
     }
 
     /* ========== About ========== */
@@ -1095,7 +1125,7 @@
       }
 
       .services__grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
       }
 
       .steps__grid {
@@ -1157,7 +1187,7 @@
         </div>
         <h1>Починим ваш компьютер или телефон <span class="accent">за 1 день</span></h1>
         <p class="hero__subtitle">
-          Выезд на дом и в офис. Бесплатная диагностика. Работаем с ноутбуками, ПК и смартфонами — быстро, честно и с гарантией.
+          Выезд на дом и в офис. Диагностика от 500 рублей. Работаем с ноутбуками, ПК и смартфонами — быстро, честно и с гарантией.
         </p>
         <div class="hero__actions">
           <a href="#lead" class="btn btn-primary btn-lg">
@@ -1192,7 +1222,7 @@
             <div class="feature-item__icon"><i class="fas fa-stethoscope"></i></div>
             <div class="feature-item__text">
               <strong>Диагностика</strong>
-              <span>бесплатно</span>
+              <span>500 рублей</span>
             </div>
           </div>
         </div>
@@ -1229,38 +1259,80 @@
     <div class="container">
       <div class="section-header fade-in">
         <h2>Наши <span class="accent">услуги</span></h2>
-        <p>Полный спектр ремонта компьютерной и мобильной техники — от чистки до восстановления данных</p>
+        <p>Понятные цены на ремонт компьютерной и мобильной техники без скрытых доплат</p>
       </div>
       <div class="services__grid">
         <article class="service-card fade-in">
-          <div class="service-card__icon"><i class="fas fa-fan"></i></div>
-          <h3>Чистка от пыли + термопаста</h3>
-          <p>Глубокая чистка системы охлаждения и замена термопасты — ноутбук снова тихий и холодный.</p>
+          <img class="service-card__image" src="assets/services/service-diagnostics.webp" alt="Диагностика ноутбука профессиональным оборудованием" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-stethoscope"></i></div>
+            <h3>Диагностика</h3>
+            <p>Определим причину неисправности и заранее согласуем стоимость ремонта.</p>
+            <div class="service-card__price">500 руб.</div>
+          </div>
         </article>
         <article class="service-card fade-in">
-          <div class="service-card__icon"><i class="fas fa-mobile-alt"></i></div>
-          <h3>Замена экрана на телефоне</h3>
-          <p>Качественные дисплеи с сохранением чувствительности и яркости. Работаем с большинством моделей.</p>
+          <img class="service-card__image" src="assets/services/service-cleaning.webp" alt="Чистка ноутбука от пыли" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-fan"></i></div>
+            <h3>Чистка от пыли</h3>
+            <p>Глубокая чистка системы охлаждения системного блока или ноутбука.</p>
+            <div class="service-card__price">1 500 руб.</div>
+          </div>
         </article>
         <article class="service-card fade-in">
-          <div class="service-card__icon"><i class="fas fa-battery-full"></i></div>
-          <h3>Замена аккумулятора</h3>
-          <p>Новая батарея для телефона или ноутбука — больше не сядет в самый нужный момент.</p>
+          <img class="service-card__image" src="assets/services/service-thermal-paste.webp" alt="Замена термопасты на процессоре" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-temperature-low"></i></div>
+            <h3>Замена термопасты</h3>
+            <p>Обновим термоинтерфейс и снизим рабочую температуру устройства.</p>
+            <div class="service-card__price">1 000 руб.</div>
+          </div>
         </article>
         <article class="service-card fade-in">
-          <div class="service-card__icon"><i class="fab fa-windows"></i></div>
-          <h3>Установка Windows и драйверов</h3>
-          <p>Чистая установка ОС, драйверов и базового ПО. Компьютер как новый — без вирусов и тормозов.</p>
+          <img class="service-card__image" src="assets/services/service-windows.webp" alt="Установка операционной системы на ноутбук" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fab fa-windows"></i></div>
+            <h3>Установка Windows или ПО</h3>
+            <p>Установим систему, драйверы и необходимые программы, выполним настройку.</p>
+            <div class="service-card__price">3 500 руб.</div>
+          </div>
         </article>
         <article class="service-card fade-in">
-          <div class="service-card__icon"><i class="fas fa-search"></i></div>
-          <h3>Бесплатная диагностика</h3>
-          <p>Находим причину поломки и озвучиваем точную цену до начала работ. Без скрытых доплат.</p>
+          <img class="service-card__image" src="assets/services/service-phone-screen.webp" alt="Замена экрана смартфона" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-mobile-alt"></i></div>
+            <h3>Замена экрана на телефоне</h3>
+            <p>Аккуратно заменим повреждённый дисплей и проверим работу сенсора.</p>
+            <div class="service-card__price">от 500 руб.</div>
+          </div>
         </article>
         <article class="service-card fade-in">
-          <div class="service-card__icon"><i class="fas fa-hdd"></i></div>
-          <h3>Восстановление данных</h3>
-          <p>Спасаем фото, документы и файлы с повреждённых дисков, флешек и карт памяти.</p>
+          <img class="service-card__image" src="assets/services/service-battery.webp" alt="Замена аккумулятора телефона и ноутбука" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-battery-full"></i></div>
+            <h3>Замена аккумулятора</h3>
+            <p>Установим новый аккумулятор в телефон или ноутбук и проверим зарядку.</p>
+            <div class="service-card__price">от 5 000 руб.</div>
+          </div>
+        </article>
+        <article class="service-card fade-in">
+          <img class="service-card__image" src="assets/services/service-data-recovery.webp" alt="Восстановление данных с жёсткого диска" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-hdd"></i></div>
+            <h3>Восстановление данных</h3>
+            <p>Восстановим документы, фотографии и другие файлы с повреждённого диска.</p>
+            <div class="service-card__price">от 2 000 руб.</div>
+          </div>
+        </article>
+        <article class="service-card fade-in">
+          <img class="service-card__image" src="assets/services/service-pc-build.webp" alt="Профессиональная сборка персонального компьютера" loading="lazy" />
+          <div class="service-card__body">
+            <div class="service-card__icon"><i class="fas fa-desktop"></i></div>
+            <h3>Сборка ПК под ключ</h3>
+            <p>Подберём комплектующие, соберём компьютер, установим систему и настроим.</p>
+            <div class="service-card__price">от 6 000 руб.</div>
+          </div>
         </article>
       </div>
     </div>
@@ -1312,7 +1384,7 @@
           <span class="step-card__number">02</span>
           <div class="step-card__icon"><i class="fas fa-stethoscope"></i></div>
           <h3>Диагностика</h3>
-          <p>Бесплатно находим причину поломки и составляем план ремонта.</p>
+          <p>Находим причину поломки и составляем план ремонта. Стоимость диагностики — 500 рублей.</p>
         </div>
         <div class="step-card fade-in">
           <span class="step-card__number">03</span>
