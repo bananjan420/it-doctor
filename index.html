@@ -1602,10 +1602,6 @@
       const message = leadForm.message.value.trim() || "Не указано";
       const submitButton = leadForm.querySelector('button[type="submit"]');
 
-      // #region agent log
-      fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'A,D',location:'index.html:leadForm.submit',message:'Form submit handler entered',data:{hasName:Boolean(name),phoneDigitsCount:phoneDigits.length,hasMessage:message!=='Не указано'},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
       if (!name) {
         showFormStatus("Пожалуйста, заполните имя и телефон.", "error");
         return;
@@ -1623,25 +1619,13 @@
       showFormStatus("", "");
 
       try {
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'A,B,C,E',location:'index.html:beforeFunctionFetch',message:'Calling Netlify submit function',data:{functionPath:'/.netlify/functions/submit'},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         const response = await fetch("/.netlify/functions/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, phone, message })
         });
 
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'B,C,E',location:'index.html:afterFunctionFetch',message:'Netlify function responded',data:{httpStatus:response.status,httpOk:response.ok},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         const result = await response.json();
-
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'B,C,E',location:'index.html:functionResult',message:'Netlify function result parsed',data:{resultOk:Boolean(result.ok),error:result.error||null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         if (!response.ok || !result.ok) {
           throw new Error(result.error || "Ошибка отправки заявки");
@@ -1654,10 +1638,6 @@
           "success"
         );
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'A,B,C,D,E',location:'index.html:submitCatch',message:'Submission failed in browser',data:{errorName:error?.name||'Unknown',errorMessage:error?.message||'Unknown'},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         console.error("Ошибка отправки заявки:", error);
         showFormStatus(
           "Не удалось отправить заявку. Попробуйте ещё раз или свяжитесь с нами по телефону.",
