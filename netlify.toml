@@ -5,6 +5,10 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[[edge_functions]]
+  function = "telegram-test"
+  path = "/api/telegram-test"
+
 [[headers]]
   for = "/index.html"
 

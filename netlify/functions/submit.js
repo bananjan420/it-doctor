@@ -1,7 +1,4 @@
-const https = require("node:https");
-
-const TELEGRAM_HOST = "api.telegram.org";
-const TELEGRAM_TIMEOUT_MS = 10000;
+const TELEGRAM_API_BASE = "https://api.telegram.org";
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -51,15 +48,24 @@ exports.handler = async (event) => {
   ].join("\n");
 
   try {
-    const { statusCode, result } = await sendTelegramMessage(botToken, {
-      chat_id: chatId,
-      text: telegramMessage,
-      parse_mode: "HTML"
-    });
+    const response = await fetch(
+      `${TELEGRAM_API_BASE}/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: telegramMessage,
+          parse_mode: "HTML"
+        })
+      }
+    );
 
-    if (statusCode < 200 || statusCode >= 300 || !result.ok) {
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
       console.error("Telegram API error", {
-        status: statusCode,
+        status: response.status,
         description: result.description
       });
       return jsonResponse(502, {
@@ -93,45 +99,4 @@ function jsonResponse(statusCode, body) {
     },
     body: JSON.stringify(body)
   };
-}
-
-function sendTelegramMessage(botToken, payload) {
-  const body = JSON.stringify(payload);
-
-  return new Promise((resolve, reject) => {
-    const request = https.request(
-      {
-        hostname: TELEGRAM_HOST,
-        path: `/bot${botToken}/sendMessage`,
-        method: "POST",
-        family: 4,
-        signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(body)
-        }
-      },
-      (response) => {
-        let responseBody = "";
-
-        response.setEncoding("utf8");
-        response.on("data", (chunk) => {
-          responseBody += chunk;
-        });
-        response.on("end", () => {
-          try {
-            resolve({
-              statusCode: response.statusCode || 500,
-              result: JSON.parse(responseBody)
-            });
-          } catch (error) {
-            reject(error);
-          }
-        });
-      }
-    );
-
-    request.on("error", reject);
-    request.end(body);
-  });
 }
