@@ -1414,7 +1414,17 @@
           </div>
           <div class="form-group">
             <label for="phone">Телефон</label>
-            <input type="tel" id="phone" name="phone" placeholder="+7 (___) ___-__-__" required autocomplete="tel" />
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value="+7 "
+              placeholder="+7 (___) ___-__-__"
+              inputmode="numeric"
+              maxlength="18"
+              required
+              autocomplete="tel"
+            />
           </div>
           <div class="form-group">
             <label for="message">Сообщение</label>
@@ -1486,12 +1496,6 @@
   </footer>
 
   <script>
-    // Вставьте сюда токен вашего Telegram-бота от @BotFather.
-    const BOT_TOKEN = "8751184511:AAEO-PlO8P3yuJy9bEnu1MyxKfwEJoAuUZI";
-
-    // Вставьте сюда свой CHAT_ID, полученный через @userinfobot.
-    const CHAT_ID = "464693830";
-
     // ===== Burger menu =====
     const burger = document.getElementById("burger");
     const mobileMenu = document.getElementById("mobileMenu");
@@ -1530,45 +1534,84 @@
 
     // ===== Lead form: отправка заявки напрямую в Telegram =====
     const leadForm = document.getElementById("leadForm");
+    const phoneInput = document.getElementById("phone");
+
+    // Оставляет только 10 цифр номера после кода страны и добавляет маску.
+    function formatRussianPhone(value) {
+      let digits = value.replace(/\D/g, "");
+
+      if (digits.startsWith("7") || digits.startsWith("8")) {
+        digits = digits.slice(1);
+      }
+
+      digits = digits.slice(0, 10);
+
+      let formatted = "+7";
+      if (digits.length > 0) formatted += ` (${digits.slice(0, 3)}`;
+      if (digits.length >= 3) formatted += ")";
+      if (digits.length > 3) formatted += ` ${digits.slice(3, 6)}`;
+      if (digits.length > 6) formatted += `-${digits.slice(6, 8)}`;
+      if (digits.length > 8) formatted += `-${digits.slice(8, 10)}`;
+
+      return `${formatted}${digits.length === 0 ? " " : ""}`;
+    }
+
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = formatRussianPhone(phoneInput.value);
+    });
+
+    phoneInput.addEventListener("focus", () => {
+      phoneInput.value = formatRussianPhone(phoneInput.value);
+
+      requestAnimationFrame(() => {
+        if ((phoneInput.selectionStart ?? 0) < 3) {
+          phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
+        }
+      });
+    });
+
+    phoneInput.addEventListener("click", () => {
+      if ((phoneInput.selectionStart ?? 0) < 3) {
+        phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
+      }
+    });
+
+    phoneInput.addEventListener("keydown", (event) => {
+      const cursorAtPrefix = (phoneInput.selectionStart ?? 0) <= 3;
+      const noRangeSelected = phoneInput.selectionStart === phoneInput.selectionEnd;
+
+      if (
+        (event.key === "Backspace" || event.key === "Delete") &&
+        cursorAtPrefix &&
+        noRangeSelected
+      ) {
+        event.preventDefault();
+      }
+    });
+
+    phoneInput.addEventListener("blur", () => {
+      phoneInput.value = formatRussianPhone(phoneInput.value);
+    });
 
     leadForm.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const name = leadForm.name.value.trim();
       const phone = leadForm.phone.value.trim();
+      const phoneDigits = phone.replace(/\D/g, "");
       const message = leadForm.message.value.trim() || "Не указано";
       const submitButton = leadForm.querySelector('button[type="submit"]');
 
-      // #region agent log
-      fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'D',location:'index.html:leadForm.submit',message:'Form submit handler entered',data:{hasName:Boolean(name),hasPhone:Boolean(phone),hasMessage:message!=='Не указано',hasSubmitButton:Boolean(submitButton)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
-      if (!name || !phone) {
+      if (!name) {
         showFormStatus("Пожалуйста, заполните имя и телефон.", "error");
         return;
       }
 
-      if (
-        BOT_TOKEN === "ВСТАВЬТЕ_СЮДА_BOT_TOKEN" ||
-        CHAT_ID === "ВСТАВЬТЕ_СЮДА_CHAT_ID"
-      ) {
-        showFormStatus("Укажите BOT_TOKEN и CHAT_ID в коде сайта.", "error");
+      if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
+        showFormStatus("Введите полный номер телефона в формате +7 (999) 123-45-67.", "error");
+        phoneInput.focus();
         return;
       }
-
-      const dateTime = new Intl.DateTimeFormat("ru-RU", {
-        dateStyle: "medium",
-        timeStyle: "short"
-      }).format(new Date());
-
-      const telegramMessage = [
-        "<b>📩 НОВАЯ ЗАЯВКА С САЙТА</b>",
-        "",
-        `🕐 ${escapeHtml(dateTime)}`,
-        `👤 <b>Имя:</b> ${escapeHtml(name)}`,
-        `📞 <b>Телефон:</b> ${escapeHtml(phone)}`,
-        `📝 <b>Сообщение:</b> ${escapeHtml(message)}`
-      ].join("\n");
 
       const originalButtonContent = submitButton.innerHTML;
       submitButton.disabled = true;
@@ -1576,47 +1619,25 @@
       showFormStatus("", "");
 
       try {
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'A,B,C',location:'index.html:beforeTelegramFetch',message:'About to call Telegram API',data:{tokenConfigured:BOT_TOKEN!=='ВСТАВЬТЕ_СЮДА_BOT_TOKEN',chatIdConfigured:CHAT_ID!=='ВСТАВЬТЕ_СЮДА_CHAT_ID',pageProtocol:location.protocol},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
-        const response = await fetch(
-          `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: CHAT_ID,
-              text: telegramMessage,
-              parse_mode: "HTML"
-            })
-          }
-        );
-
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'A,B,C',location:'index.html:afterTelegramFetch',message:'Telegram HTTP response received',data:{httpStatus:response.status,httpOk:response.ok,responseType:response.type},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
+        const response = await fetch("/.netlify/functions/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, phone, message })
+        });
 
         const result = await response.json();
 
         if (!response.ok || !result.ok) {
-          // #region agent log
-          fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'B,C',location:'index.html:telegramApiError',message:'Telegram API rejected request',data:{httpStatus:response.status,telegramOk:Boolean(result.ok),errorCode:result.error_code||null,description:result.description||null},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-
-          throw new Error(result.description || "Ошибка Telegram API");
+          throw new Error(result.error || "Ошибка отправки заявки");
         }
 
         leadForm.reset();
+        phoneInput.value = "+7 ";
         showFormStatus(
           "Спасибо! Ваша заявка принята. Мы свяжемся с вами в ближайшее время.",
           "success"
         );
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7737/ingest/821c833e-0422-4bb9-a2f2-91d9b220e291',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'a876b3'},body:JSON.stringify({sessionId:'a876b3',runId:'initial',hypothesisId:'A,B,C,D',location:'index.html:telegramCatch',message:'Telegram submission failed',data:{errorName:error?.name||'Unknown',isNetworkTypeError:error instanceof TypeError},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
         console.error("Ошибка отправки заявки:", error);
         showFormStatus(
           "Не удалось отправить заявку. Попробуйте ещё раз или свяжитесь с нами по телефону.",
@@ -1643,13 +1664,6 @@
       status.className = type ? `form-status form-status--${type}` : "form-status";
     }
 
-    // Не позволяет пользовательскому вводу нарушить HTML-разметку Telegram.
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
-    }
   </script>
 </body>
 </html>
