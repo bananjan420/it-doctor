@@ -1561,9 +1561,36 @@
     });
 
     phoneInput.addEventListener("focus", () => {
-      if (!phoneInput.value.trim()) {
-        phoneInput.value = "+7 ";
+      phoneInput.value = formatRussianPhone(phoneInput.value);
+
+      requestAnimationFrame(() => {
+        if ((phoneInput.selectionStart ?? 0) < 3) {
+          phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
+        }
+      });
+    });
+
+    phoneInput.addEventListener("click", () => {
+      if ((phoneInput.selectionStart ?? 0) < 3) {
+        phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
       }
+    });
+
+    phoneInput.addEventListener("keydown", (event) => {
+      const cursorAtPrefix = (phoneInput.selectionStart ?? 0) <= 3;
+      const noRangeSelected = phoneInput.selectionStart === phoneInput.selectionEnd;
+
+      if (
+        (event.key === "Backspace" || event.key === "Delete") &&
+        cursorAtPrefix &&
+        noRangeSelected
+      ) {
+        event.preventDefault();
+      }
+    });
+
+    phoneInput.addEventListener("blur", () => {
+      phoneInput.value = formatRussianPhone(phoneInput.value);
     });
 
     leadForm.addEventListener("submit", async (event) => {
