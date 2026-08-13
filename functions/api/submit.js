@@ -1,22 +1,26 @@
 const TELEGRAM_API_BASE = "https://api.telegram.org";
+const TELEGRAM_TIMEOUT_MS = 10000;
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
+export async function onRequest({ request, env }) {
+  if (request.method !== "POST") {
     return jsonResponse(405, { ok: false, error: "Method not allowed" });
   }
 
-  const botToken = process.env.BOT_TOKEN;
-  const chatId = process.env.CHAT_ID;
+  const botToken = env.BOT_TOKEN?.trim();
+  const chatId = env.CHAT_ID?.trim();
 
   if (!botToken || !chatId) {
     console.error("BOT_TOKEN or CHAT_ID is not configured");
-    return jsonResponse(500, { ok: false, error: "Server is not configured" });
+    return jsonResponse(500, {
+      ok: false,
+      error: "Server is not configured"
+    });
   }
 
   let payload;
 
   try {
-    payload = JSON.parse(event.body || "{}");
+    payload = await request.json();
   } catch {
     return jsonResponse(400, { ok: false, error: "Invalid JSON" });
   }
@@ -53,6 +57,7 @@ exports.handler = async (event) => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
         body: JSON.stringify({
           chat_id: chatId,
           text: telegramMessage,
@@ -64,13 +69,13 @@ exports.handler = async (event) => {
     const result = await response.json();
 
     if (!response.ok || !result.ok) {
-      console.error("Telegram API error", {
+      console.error("Telegram API rejected request", {
         status: response.status,
-        description: result.description
+        errorCode: result.error_code
       });
       return jsonResponse(502, {
         ok: false,
-        error: "Не удалось отправить заявку"
+        error: result.description || "Не удалось отправить заявку"
       });
     }
 
@@ -82,7 +87,7 @@ exports.handler = async (event) => {
       error: "Не удалось связаться с Telegram"
     });
   }
-};
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -91,12 +96,11 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;");
 }
 
-function jsonResponse(statusCode, body) {
-  return {
-    statusCode,
+function jsonResponse(status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
     headers: {
       "Content-Type": "application/json; charset=utf-8"
-    },
-    body: JSON.stringify(body)
-  };
+    }
+  });
 }
