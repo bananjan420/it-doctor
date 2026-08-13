@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+  <meta name="theme-color" content="#0b1220" />
+  <meta
+    name="description"
+    content="IT Doctor — выбор услуги и заявка на ремонт техники"
+  />
+  <title>IT Doctor — Mini App</title>
+  <link rel="stylesheet" href="assets/miniapp.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="assets/miniapp.js" defer></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div class="brand-mark" aria-hidden="true">
+        <span>IT</span>
+      </div>
+      <div>
+        <p class="eyebrow">Сервис Марата</p>
+        <h1>IT Doctor</h1>
+        <p class="hero__subtitle">
+          Ремонт компьютеров, ноутбуков и смартфонов
+        </p>
+      </div>
+    </header>
+
+    <section class="trust-row" aria-label="Преимущества">
+      <span>Ремонт от 1 дня</span>
+      <span>Гарантия</span>
+      <span>Цена заранее</span>
+    </section>
+
+    <section class="section" aria-labelledby="servicesTitle">
+      <div class="section-heading">
+        <div>
+          <p class="step">Шаг 1 из 2</p>
+          <h2 id="servicesTitle">Выберите услугу</h2>
+        </div>
+        <span class="section-icon" aria-hidden="true">01</span>
+      </div>
+
+      <div class="service-grid" id="serviceGrid">
+        <label class="service-card">
+          <input type="radio" name="service" value="Диагностика — 500 руб." />
+          <span class="service-card__icon">🔍</span>
+          <span class="service-card__content">
+            <strong>Диагностика</strong>
+            <small>Найдём причину неисправности</small>
+          </span>
+          <span class="service-card__price">500 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Чистка и профилактика — 1 500 руб." />
+          <span class="service-card__icon">🧹</span>
+          <span class="service-card__content">
+            <strong>Чистка и профилактика</strong>
+            <small>Уберём пыль и улучшим охлаждение</small>
+          </span>
+          <span class="service-card__price">1 500 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Замена термопасты — 1 000 руб." />
+          <span class="service-card__icon">🌡️</span>
+          <span class="service-card__content">
+            <strong>Замена термопасты</strong>
+            <small>Снизим нагрев устройства</small>
+          </span>
+          <span class="service-card__price">1 000 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Windows и программы — 3 500 руб." />
+          <span class="service-card__icon">💿</span>
+          <span class="service-card__content">
+            <strong>Windows и программы</strong>
+            <small>Система, драйверы и настройка</small>
+          </span>
+          <span class="service-card__price">3 500 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Замена экрана телефона — от 500 руб." />
+          <span class="service-card__icon">📱</span>
+          <span class="service-card__content">
+            <strong>Экран телефона</strong>
+            <small>Замена дисплея и проверка сенсора</small>
+          </span>
+          <span class="service-card__price">от 500 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Замена аккумулятора — от 5 000 руб." />
+          <span class="service-card__icon">🔋</span>
+          <span class="service-card__content">
+            <strong>Новый аккумулятор</strong>
+            <small>Для телефона или ноутбука</small>
+          </span>
+          <span class="service-card__price">от 5 000 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Восстановление данных — от 2 000 руб." />
+          <span class="service-card__icon">💾</span>
+          <span class="service-card__content">
+            <strong>Восстановление данных</strong>
+            <small>Документы, фото и другие файлы</small>
+          </span>
+          <span class="service-card__price">от 2 000 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Сборка ПК под ключ — от 6 000 руб." />
+          <span class="service-card__icon">🖥️</span>
+          <span class="service-card__content">
+            <strong>Сборка ПК под ключ</strong>
+            <small>Подбор, сборка и тестирование</small>
+          </span>
+          <span class="service-card__price">от 6 000 ₽</span>
+        </label>
+
+        <label class="service-card">
+          <input type="radio" name="service" value="Другая задача" />
+          <span class="service-card__icon">✏️</span>
+          <span class="service-card__content">
+            <strong>Другая задача</strong>
+            <small>Опишите проблему в форме</small>
+          </span>
+          <span class="service-card__price">Расчёт</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="section form-section" id="request" aria-labelledby="requestTitle">
+      <div class="section-heading">
+        <div>
+          <p class="step">Шаг 2 из 2</p>
+          <h2 id="requestTitle">Оставьте заявку</h2>
+        </div>
+        <span class="section-icon" aria-hidden="true">02</span>
+      </div>
+
+      <form id="miniAppForm" novalidate>
+        <div class="field">
+          <label for="name">Ваше имя</label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            placeholder="Как к вам обращаться?"
+            maxlength="100"
+            autocomplete="name"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="phone">Номер телефона</label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            value="+7 "
+            placeholder="+7 (___) ___-__-__"
+            maxlength="18"
+            inputmode="numeric"
+            autocomplete="tel"
+            required
+          />
+        </div>
+
+        <div class="field">
+          <label for="details">Что случилось?</label>
+          <textarea
+            id="details"
+            name="details"
+            maxlength="1000"
+            placeholder="Например: ноутбук шумит и сильно нагревается"
+          ></textarea>
+        </div>
+
+        <button class="primary-button" id="submitButton" type="submit">
+          Отправить заявку
+        </button>
+        <p class="form-note">
+          Нажимая кнопку, вы соглашаетесь на обработку данных для связи по заявке.
+        </p>
+        <p class="form-status" id="formStatus" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="success-card" id="successCard" hidden>
+      <div class="success-card__icon">✓</div>
+      <h2>Заявка отправлена</h2>
+      <p>Марат свяжется с вами в ближайшее время.</p>
+      <button class="secondary-button" id="closeAppButton" type="button">
+        Вернуться в Telegram
+      </button>
+    </section>
+
+    <footer>
+      <a href="https://it-doctor.pages.dev/#hero" target="_blank" rel="noopener">
+        Открыть полный сайт
+      </a>
+    </footer>
+  </main>
+
+  <div class="sticky-action">
+    <button id="continueButton" type="button" disabled>
+      Выберите услугу
+    </button>
+  </div>
+</body>
+</html>

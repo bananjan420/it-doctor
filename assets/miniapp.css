@@ -1,0 +1,426 @@
+:root {
+  color-scheme: dark;
+  --app-bg: var(--tg-theme-bg-color, #0b1220);
+  --app-surface: var(--tg-theme-secondary-bg-color, #121c2e);
+  --app-text: var(--tg-theme-text-color, #f8fbff);
+  --app-muted: var(--tg-theme-hint-color, #8fa3bd);
+  --app-link: var(--tg-theme-link-color, #42c8ff);
+  --app-button: var(--tg-theme-button-color, #168cff);
+  --app-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --app-border: color-mix(in srgb, var(--app-link) 20%, transparent);
+  --app-accent: #20d2c8;
+  --app-danger: #ff6b7a;
+  --app-success: #32d583;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(22, 140, 255, 0.24), transparent 32%),
+    radial-gradient(circle at 0% 30%, rgba(32, 210, 200, 0.12), transparent 26%),
+    var(--app-bg);
+  color: var(--app-text);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding:
+    calc(22px + env(safe-area-inset-top))
+    16px
+    calc(112px + env(safe-area-inset-bottom));
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 18px;
+}
+
+.brand-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 19px;
+  background: linear-gradient(145deg, #168cff, #20d2c8);
+  box-shadow: 0 12px 30px rgba(22, 140, 255, 0.25);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.eyebrow,
+.step {
+  margin: 0 0 3px;
+  color: var(--app-link);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 2px;
+  font-size: clamp(1.55rem, 6vw, 2rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.025em;
+}
+
+.hero__subtitle {
+  margin-bottom: 0;
+  color: var(--app-muted);
+  font-size: 0.9rem;
+}
+
+.trust-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.trust-row span {
+  padding: 9px 7px;
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--app-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.section {
+  margin-bottom: 18px;
+  padding: 18px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--app-surface) 94%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.section-icon {
+  color: color-mix(in srgb, var(--app-link) 22%, transparent);
+  font-size: 2.3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.service-grid {
+  display: grid;
+  gap: 9px;
+}
+
+.service-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 70px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--app-bg) 72%, var(--app-surface));
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.service-card:active {
+  transform: scale(0.985);
+}
+
+.service-card:has(input:checked) {
+  border-color: var(--app-link);
+  background: color-mix(in srgb, var(--app-button) 16%, var(--app-surface));
+}
+
+.service-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.service-card__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 1.25rem;
+}
+
+.service-card__content {
+  min-width: 0;
+}
+
+.service-card__content strong,
+.service-card__content small {
+  display: block;
+}
+
+.service-card__content strong {
+  margin-bottom: 2px;
+  font-size: 0.9rem;
+}
+
+.service-card__content small {
+  overflow: hidden;
+  color: var(--app-muted);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-card__price {
+  color: var(--app-link);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.form-section {
+  scroll-margin-top: 12px;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  margin: 0 0 7px 3px;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  outline: none;
+  background: color-mix(in srgb, var(--app-bg) 72%, var(--app-surface));
+  color: var(--app-text);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field input {
+  min-height: 50px;
+  padding: 0 14px;
+}
+
+.field textarea {
+  min-height: 96px;
+  padding: 13px 14px;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--app-link);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-link) 14%, transparent);
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--app-muted);
+  opacity: 0.72;
+}
+
+.primary-button,
+.secondary-button,
+.sticky-action button {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--app-button);
+  color: var(--app-button-text);
+  cursor: pointer;
+  font-weight: 800;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.primary-button:active,
+.secondary-button:active,
+.sticky-action button:active {
+  transform: scale(0.985);
+}
+
+.primary-button:disabled,
+.sticky-action button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.form-note {
+  margin: 10px 4px 0;
+  color: var(--app-muted);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+.form-status {
+  min-height: 20px;
+  margin: 12px 2px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.form-status--error {
+  color: var(--app-danger);
+}
+
+.form-status--success {
+  color: var(--app-success);
+}
+
+.success-card {
+  padding: 28px 20px;
+  border: 1px solid color-mix(in srgb, var(--app-success) 35%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--app-success) 9%, var(--app-surface));
+  text-align: center;
+}
+
+.success-card__icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--app-success);
+  color: #07130e;
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.success-card p {
+  color: var(--app-muted);
+}
+
+.secondary-button {
+  border: 1px solid var(--app-border);
+  background: transparent;
+  color: var(--app-text);
+}
+
+footer {
+  padding: 16px 0 4px;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+footer a {
+  color: var(--app-link);
+}
+
+.sticky-action {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  padding:
+    10px
+    max(16px, calc((100vw - 688px) / 2))
+    calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg) 88%, transparent);
+  backdrop-filter: blur(18px);
+}
+
+.sticky-action button {
+  box-shadow: 0 10px 28px rgba(22, 140, 255, 0.24);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (min-width: 620px) {
+  .app-shell {
+    padding-right: 22px;
+    padding-left: 22px;
+  }
+
+  .service-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

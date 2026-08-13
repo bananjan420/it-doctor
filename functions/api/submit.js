@@ -28,6 +28,15 @@ export async function onRequest({ request, env }) {
   const name = String(payload.name || "").trim();
   const phone = String(payload.phone || "").trim();
   const message = String(payload.message || "").trim() || "Не указано";
+  const service = String(payload.service || "").trim() || "Не выбрана";
+  const source =
+    payload.source === "Telegram Mini App"
+      ? "Telegram Mini App"
+      : "Сайт";
+  const telegramUser =
+    payload.telegramUser && typeof payload.telegramUser === "object"
+      ? payload.telegramUser
+      : null;
 
   if (!name || !phone) {
     return jsonResponse(422, {
@@ -43,12 +52,26 @@ export async function onRequest({ request, env }) {
   }).format(new Date());
 
   const telegramMessage = [
-    "<b>📩 НОВАЯ ЗАЯВКА С САЙТА</b>",
+    "<b>📩 НОВАЯ ЗАЯВКА</b>",
     "",
     `🕐 ${escapeHtml(dateTime)}`,
+    `📍 <b>Источник:</b> ${escapeHtml(source)}`,
     `👤 <b>Имя:</b> ${escapeHtml(name)}`,
     `📞 <b>Телефон:</b> ${escapeHtml(phone)}`,
-    `📝 <b>Сообщение:</b> ${escapeHtml(message)}`
+    `🛠 <b>Услуга:</b> ${escapeHtml(service)}`,
+    `📝 <b>Сообщение:</b> ${escapeHtml(message)}`,
+    ...(telegramUser
+      ? [
+          `💬 <b>Telegram:</b> ${
+            telegramUser.username
+              ? `@${escapeHtml(String(telegramUser.username))}`
+              : "username не указан"
+          }`,
+          `🆔 <b>User ID:</b> <code>${escapeHtml(
+            String(telegramUser.id || "не указан")
+          )}</code>`
+        ]
+      : [])
   ].join("\n");
 
   try {
