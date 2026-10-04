@@ -123,7 +123,9 @@ form.addEventListener("submit", async (event) => {
         phone,
         message: details || "Не указано",
         service,
-        source: "Telegram Mini App",
+        // Источник уходит кодом. Сервер всё равно определяет его сам
+        // и не доверяет произвольным значениям из браузера.
+        source: "mini_app",
         telegramUser: user
           ? {
               id: user.id,
