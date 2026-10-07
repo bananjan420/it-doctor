@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Заявки — IT Doctor</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #151d2e;
+      --panel-2: #1c2639;
+      --border: #26314a;
+      --text: #e8edf7;
+      --muted: #93a1bd;
+      --accent: #3b82f6;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --ready: #06b6d4;
+      --done: #64748b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 24px 16px 64px;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; }
+
+    header.top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    h1 { font-size: 22px; margin: 0; }
+    .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 10px 16px;
+    }
+
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: .6; cursor: default; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    /* --- Вход --- */
+    #login { max-width: 420px; margin: 10vh auto 0; }
+    #login h1 { margin-bottom: 6px; }
+    #login p { color: var(--muted); margin: 0 0 18px; }
+
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      margin-bottom: 14px;
+    }
+
+    .error { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 10px; }
+
+    /* --- Статистика --- */
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      min-width: 120px;
+    }
+    .stat b { display: block; font-size: 20px; }
+    .stat span { color: var(--muted); font-size: 13px; }
+
+    /* --- Таблица --- */
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th { color: var(--muted); font-weight: 500; font-size: 13px; white-space: nowrap; }
+
+    td.nowrap { white-space: nowrap; }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .badge.new { background: rgba(59,130,246,.16); color: #93c5fd; border-color: rgba(59,130,246,.4); }
+    .badge.in_progress { background: rgba(245,158,11,.16); color: #fcd34d; border-color: rgba(245,158,11,.4); }
+    .badge.ready { background: rgba(6,182,212,.16); color: #67e8f9; border-color: rgba(6,182,212,.4); }
+    .badge.completed { background: rgba(100,116,139,.2); color: #cbd5e1; border-color: rgba(100,116,139,.5); }
+
+    .source { color: var(--muted); font-size: 13px; }
+
+    select {
+      font: inherit;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    .msg { color: var(--muted); font-size: 13px; max-width: 320px; }
+
+    .muted { color: var(--muted); }
+    .empty { padding: 32px; text-align: center; color: var(--muted); }
+    .saved { color: var(--ok); font-size: 13px; margin-left: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- Вход -->
+<section class="card" id="login">
+  <h1>Заявки IT Doctor</h1>
+  <p>Введите пароль владельца, чтобы открыть список заявок.</p>
+  <label for="key">Пароль</label>
+  <input type="password" id="key" autocomplete="current-password" placeholder="пароль" />
+  <button class="primary" id="loginBtn" style="width:100%">Войти</button>
+  <div class="error" id="loginError"></div>
+</section>
+
+<!-- Панель -->
+<section id="panel" hidden>
+  <header class="top">
+    <div>
+      <h1>Заявки</h1>
+      <div class="sub" id="updated">—</div>
+    </div>
+    <div>
+      <button id="refreshBtn">Обновить</button>
+      <button id="logoutBtn">Выйти</button>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Имя</th>
+            <th>Телефон</th>
+            <th>Услуга</th>
+            <th>Сообщение</th>
+            <th>Источник</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden>Заявок пока нет.</div>
+  </div>
+</section>
+
+<script>
+  const SOURCE_LABELS = {
+    website: "Сайт",
+    mini_app: "Mini App",
+    telegram_bot: "Telegram-бот"
+  };
+
+  const STATUS_LABELS = {
+    new: "Новая",
+    in_progress: "В работе",
+    ready: "Готова",
+    completed: "Завершена"
+  };
+
+  const STATUS_ORDER = ["new", "in_progress", "ready", "completed"];
+
+  const loginCard = document.getElementById("login");
+  const panel = document.getElementById("panel");
+  const keyInput = document.getElementById("key");
+  const loginError = document.getElementById("loginError");
+  const rowsBody = document.getElementById("rows");
+  const emptyBox = document.getElementById("empty");
+  const statsBox = document.getElementById("stats");
+  const updatedBox = document.getElementById("updated");
+
+  let statuses = STATUS_ORDER.map((value) => ({ value, label: STATUS_LABELS[value] }));
+
+  // --- Помощники ---------------------------------------------------------
+
+  function formatDate(iso) {
+    try {
+      return new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "short",
+        timeStyle: "short",
+        timeZone: "Europe/Moscow"
+      }).format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  async function api(method, body) {
+    const options = { method, credentials: "same-origin", headers: {} };
+
+    if (body !== undefined) {
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch("/api/leads", options);
+    let payload = {};
+
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    return { status: response.status, payload };
+  }
+
+  // --- Вход --------------------------------------------------------------
+
+  async function login(key) {
+    const { status, payload } = await api("POST", { key });
+
+    if (status === 200 && payload.ok) {
+      sessionStorage.setItem("itd_admin_key", key);
+      showPanel();
+      await load();
+      return;
+    }
+
+    loginError.textContent = payload.error || "Не удалось войти";
+    sessionStorage.removeItem("itd_admin_key");
+  }
+
+  function showPanel() {
+    loginCard.hidden = true;
+    panel.hidden = false;
+  }
+
+  function showLogin() {
+    panel.hidden = true;
+    loginCard.hidden = false;
+    keyInput.value = "";
+    keyInput.focus();
+  }
+
+  // --- Загрузка списка ---------------------------------------------------
+
+  async function load() {
+    const { status, payload } = await api("GET");
+
+    if (status === 401) {
+      sessionStorage.removeItem("itd_admin_key");
+      showLogin();
+      loginError.textContent = "Сессия истекла, войдите заново";
+      return;
+    }
+
+    if (!payload.ok) {
+      updatedBox.textContent = payload.error || "Ошибка загрузки";
+      return;
+    }
+
+    if (Array.isArray(payload.statuses) && payload.statuses.length) {
+      statuses = payload.statuses;
+    }
+
+    render(payload.leads || []);
+  }
+
+  function render(leads) {
+    updatedBox.textContent = "Обновлено: " +
+      new Intl.DateTimeFormat("ru-RU", { timeStyle: "medium" }).format(new Date()) +
+      " · всего: " + leads.length;
+
+    // Статистика по статусам.
+    const counts = {};
+    for (const lead of leads) {
+      counts[lead.status] = (counts[lead.status] || 0) + 1;
+    }
+
+    statsBox.innerHTML = statuses
+      .map((s) => `<div class="stat"><b>${counts[s.value] || 0}</b><span>${escapeHtml(s.label)}</span></div>`)
+      .join("");
+
+    emptyBox.hidden = leads.length > 0;
+
+    rowsBody.innerHTML = leads.map((lead) => {
+      const options = statuses
+        .map((s) => `<option value="${s.value}"${s.value === lead.status ? " selected" : ""}>${escapeHtml(s.label)}</option>`)
+        .join("");
+
+      return `
+        <tr data-id="${escapeHtml(lead.id)}">
+          <td class="nowrap">${escapeHtml(formatDate(lead.created_at))}</td>
+          <td>${escapeHtml(lead.name)}</td>
+          <td class="nowrap">${escapeHtml(lead.phone)}</td>
+          <td>${escapeHtml(lead.service || "—")}</td>
+          <td class="msg">${escapeHtml(lead.message || "—")}</td>
+          <td class="source">${escapeHtml(SOURCE_LABELS[lead.source] || lead.source)}</td>
+          <td class="nowrap">
+            <select data-role="status">${options}</select>
+            <span class="saved" data-role="saved" hidden>сохранено</span>
+          </td>
+        </tr>`;
+    }).join("");
+  }
+
+  // --- Смена статуса -----------------------------------------------------
+
+  async function changeStatus(row, select) {
+    const id = row.getAttribute("data-id");
+    const status = select.value;
+    const saved = row.querySelector('[data-role="saved"]');
+
+    select.disabled = true;
+    saved.hidden = true;
+
+    try {
+      const { status: httpStatus, payload } = await api("PATCH", { id, status });
+
+      if (httpStatus === 200 && payload.ok) {
+        saved.hidden = false;
+        setTimeout(() => { saved.hidden = true; }, 2000);
+        return;
+      }
+
+      if (httpStatus === 401) {
+        showLogin();
+        loginError.textContent = "Сессия истекла, войдите заново";
+        return;
+      }
+
+      alert(payload.error || "Не удалось сохранить статус");
+      await load();
+    } catch {
+      alert("Сеть недоступна, статус не сохранён");
+      await load();
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  // --- События -----------------------------------------------------------
+
+  document.getElementById("loginBtn").addEventListener("click", () => login(keyInput.value));
+
+  keyInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") login(keyInput.value);
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", () => load());
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    sessionStorage.removeItem("itd_admin_key");
+    // Пустой ключ на сервере означает выход: cookie стирается, доступ закрыт.
+    await api("POST", { key: "" });
+    showLogin();
+  });
+
+  rowsBody.addEventListener("change", (event) => {
+    const select = event.target.closest('[data-role="status"]');
+    if (!select) return;
+    changeStatus(select.closest("tr"), select);
+  });
+
+  // --- Старт -------------------------------------------------------------
+
+  // Если пароль уже вводили в этой вкладке — сразу открываем список.
+  const savedKey = sessionStorage.getItem("itd_admin_key");
+  if (savedKey) {
+    login(savedKey);
+  } else {
+    showLogin();
+  }
+</script>
+</body>
+</html>

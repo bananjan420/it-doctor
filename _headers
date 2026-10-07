@@ -9,3 +9,8 @@
 /miniapp*
   ! X-Frame-Options
   Content-Security-Policy: frame-ancestors https://web.telegram.org https://*.telegram.org
+
+# Админку не кэшируем и запрещаем поисковикам: страница только для владельца.
+/admin*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
