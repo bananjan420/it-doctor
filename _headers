@@ -14,3 +14,8 @@
 /admin*
   Cache-Control: no-store
   X-Robots-Tag: noindex, nofollow
+
+# Личный кабинет: страница для клиентов, поисковикам не показываем.
+/account*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow

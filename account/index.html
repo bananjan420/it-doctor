@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0B0E14" />
+  <title>Личный кабинет — IT Doctor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* Оформление как на сайте IT Doctor. */
+    :root {
+      --bg-primary: #0B0E14;
+      --bg-secondary: #0F141C;
+      --bg-card: #151A24;
+      --bg-card-hover: #1A2130;
+      --accent: #00D4FF;
+      --accent-secondary: #0072FF;
+      --accent-gradient: linear-gradient(135deg, #00D4FF 0%, #0072FF 100%);
+      --text-primary: #FFFFFF;
+      --text-secondary: #A0AEC0;
+      --text-muted: #6B7A8D;
+      --border: rgba(0, 212, 255, 0.15);
+      --border-strong: rgba(0, 212, 255, 0.35);
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      --shadow-accent: 0 8px 32px rgba(0, 212, 255, 0.25);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: 0.3s ease;
+      --danger: #FF6B6B;
+      --ok: #34D399;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 20px 72px;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(0, 212, 255, 0.08), transparent 45%),
+        radial-gradient(circle at 85% 10%, rgba(0, 114, 255, 0.08), transparent 45%),
+        var(--bg-primary);
+      min-height: 100vh;
+      color: var(--text-primary);
+      font: 16px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .wrap { max-width: 900px; margin: 0 auto; }
+
+    a.back {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--text-secondary); text-decoration: none;
+      font-size: 14px; margin-bottom: 22px;
+      transition: color var(--transition);
+    }
+
+    a.back:hover { color: var(--accent); }
+
+    button {
+      font: inherit; cursor: pointer;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      padding: 11px 18px;
+      transition: all var(--transition);
+    }
+
+    button:hover { border-color: var(--border-strong); background: var(--bg-card-hover); }
+    button.primary {
+      background: var(--accent-gradient); border: none;
+      color: #04121A; font-weight: 700; box-shadow: var(--shadow-accent);
+    }
+    button.primary:hover { filter: brightness(1.08); }
+    button:disabled { opacity: .6; cursor: default; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    h1 { font-size: 26px; margin: 0 0 6px; font-weight: 800; }
+    h1 span {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sub { color: var(--text-secondary); font-size: 14px; margin: 0 0 22px; }
+
+    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font: inherit;
+      transition: border-color var(--transition);
+    }
+
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    input::placeholder, textarea::placeholder { color: var(--text-muted); }
+    textarea { resize: vertical; min-height: 84px; }
+
+    .field { margin-bottom: 16px; }
+
+    /* Переключатель «Вход / Регистрация» */
+    .tabs { display: flex; gap: 8px; margin-bottom: 22px; background: var(--bg-secondary); padding: 5px; border-radius: var(--radius-sm); }
+
+    .tabs button {
+      flex: 1; border: none; background: transparent;
+      color: var(--text-secondary); font-weight: 600;
+    }
+
+    .tabs button[data-active="true"] {
+      background: var(--accent-gradient); color: #04121A;
+      box-shadow: var(--shadow-accent);
+    }
+
+    .notice {
+      padding: 18px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      margin-top: 14px;
+      display: none;
+    }
+
+    .notice[data-kind="error"] { display: block; background: rgba(255, 107, 107, .12); color: var(--danger); border: 1px solid rgba(255,107,107,.3); }
+    .notice[data-kind="ok"] { display: block; background: rgba(52, 211, 153, .12); color: var(--ok); border: 1px solid rgba(52,211,153,.3); }
+
+    /* --- Кабинет --- */
+    .account-head {
+      display: flex; flex-wrap: wrap; gap: 14px;
+      align-items: center; justify-content: space-between; margin-bottom: 22px;
+    }
+
+    .who { font-size: 14px; color: var(--text-secondary); }
+    .who b { color: var(--text-primary); }
+
+    .stats { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+
+    .stat {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px; min-width: 130px;
+      position: relative; overflow: hidden;
+    }
+
+    .stat::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--accent-gradient); }
+    .stat b { display: block; font-size: 24px; font-weight: 800; }
+    .stat span { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+
+    .lead {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 12px;
+      background: var(--bg-card);
+      transition: border-color var(--transition), transform var(--transition);
+    }
+
+    .lead:hover { border-color: var(--border-strong); }
+
+    .lead-top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .lead-date { color: var(--text-muted); font-size: 13px; }
+    .lead-rows { display: grid; gap: 6px; font-size: 14px; color: var(--text-secondary); }
+    .lead-rows b { color: var(--text-primary); font-weight: 600; }
+
+    .badge {
+      display: inline-block; padding: 5px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; white-space: nowrap;
+    }
+
+    .badge.new { background: rgba(0, 212, 255, .14); color: var(--accent); }
+    .badge.in_progress { background: rgba(255, 176, 32, .16); color: #FFB020; }
+    .badge.completed { background: rgba(52, 211, 153, .16); color: var(--ok); }
+
+    .empty { text-align: center; color: var(--text-muted); padding: 32px; }
+    .hidden { display: none !important; }
+
+    details.new-lead { margin-bottom: 22px; }
+    details.new-lead summary {
+      cursor: pointer; padding: 14px 18px; border-radius: var(--radius);
+      background: var(--bg-card); border: 1px solid var(--border);
+      font-weight: 600; list-style: none;
+    }
+    details.new-lead summary::-webkit-details-marker { display: none; }
+    details.new-lead[open] summary { border-radius: var(--radius) var(--radius) 0 0; border-bottom: none; }
+    details.new-lead .body { border: 1px solid var(--border); border-top: none; border-radius: 0 0 var(--radius) var(--radius); padding: 20px; background: var(--bg-card); }
+
+    @media (max-width: 620px) {
+      body { padding: 20px 14px 56px; }
+      h1 { font-size: 21px; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Вернуться на сайт</a>
+
+  <!-- Вход и регистрация -->
+  <section class="card" id="authView">
+    <h1>Личный <span>кабинет</span></h1>
+    <p class="sub">Войдите, чтобы видеть свои заявки и их статусы.</p>
+
+    <div class="tabs">
+      <button type="button" id="tabLogin" data-active="true">Вход</button>
+      <button type="button" id="tabRegister" data-active="false">Регистрация</button>
+    </div>
+
+    <form id="authForm">
+      <div class="field hidden" id="nameField">
+        <label for="name">Как к вам обращаться</label>
+        <input id="name" type="text" maxlength="100" placeholder="Иван" autocomplete="name" />
+      </div>
+
+      <div class="field">
+        <label for="email">Почта</label>
+        <input id="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="password">Пароль</label>
+        <input id="password" type="password" required minlength="6" placeholder="минимум 6 символов" autocomplete="current-password" />
+      </div>
+
+      <button class="primary" type="submit" id="submitBtn" style="width:100%">Войти</button>
+    </form>
+
+    <div class="notice" id="authNotice"></div>
+  </section>
+
+  <!-- Кабинет -->
+  <section id="cabinet" class="hidden">
+    <div class="account-head">
+      <div>
+        <h1>Мои <span>заявки</span></h1>
+        <div class="who" id="who"></div>
+      </div>
+      <div>
+        <button id="refreshBtn">Обновить</button>
+        <button id="logoutBtn">Выйти</button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <details class="new-lead">
+      <summary>＋ Оставить новую заявку</summary>
+      <div class="body">
+        <form id="leadForm">
+          <div class="field">
+            <label for="leadName">Имя</label>
+            <input id="leadName" type="text" required maxlength="100" placeholder="Как к вам обращаться" />
+          </div>
+          <div class="field">
+            <label for="leadPhone">Телефон</label>
+            <input id="leadPhone" type="tel" required maxlength="18" placeholder="+7 (___) ___-__-__" />
+          </div>
+          <div class="field">
+            <label for="leadService">Услуга</label>
+            <select id="leadService">
+              <option value="">Не выбрана</option>
+              <option value="🔍 Диагностика — 500 руб">🔍 Диагностика — 500 руб</option>
+              <option value="🧹 Чистка от пыли — 1500 руб">🧹 Чистка от пыли — 1500 руб</option>
+              <option value="🌡️ Замена термопасты — 1000 руб">🌡️ Замена термопасты — 1000 руб</option>
+              <option value="💿 Установка Windows или другого ПО — 3500 руб">💿 Установка Windows или другого ПО — 3500 руб</option>
+              <option value="📱 Замена экрана на телефоне — от 500 руб">📱 Замена экрана на телефоне — от 500 руб</option>
+              <option value="🔋 Замена аккумулятора — от 5000 руб">🔋 Замена аккумулятора — от 5000 руб</option>
+              <option value="💾 Восстановление данных с диска — от 2000 руб">💾 Восстановление данных с диска — от 2000 руб</option>
+              <option value="🖥️ Сборка и настройка ПК под ключ — от 6000 руб">🖥️ Сборка и настройка ПК под ключ — от 6000 руб</option>
+              <option value="✏️ Другое">✏️ Другое</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="leadMessage">Что случилось</label>
+            <textarea id="leadMessage" maxlength="1000" placeholder="Опишите проблему с устройством"></textarea>
+          </div>
+          <button class="primary" type="submit" id="leadSubmit" style="width:100%">Отправить заявку</button>
+          <div class="notice" id="leadNotice"></div>
+        </form>
+      </div>
+    </details>
+
+    <div id="leads"></div>
+  </section>
+</div>
+
+<script>
+  const TOKEN_KEY = "itd_client_token";
+
+  const STATUS_LABELS = {
+    new: "Новая",
+    in_progress: "В работе",
+    completed: "Завершена"
+  };
+
+  const authView = document.getElementById("authView");
+  const cabinet = document.getElementById("cabinet");
+  const authForm = document.getElementById("authForm");
+  const authNotice = document.getElementById("authNotice");
+  const nameField = document.getElementById("nameField");
+  const nameInput = document.getElementById("name");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const submitBtn = document.getElementById("submitBtn");
+  const tabLogin = document.getElementById("tabLogin");
+  const tabRegister = document.getElementById("tabRegister");
+  const who = document.getElementById("who");
+  const stats = document.getElementById("stats");
+  const leadsBox = document.getElementById("leads");
+  const leadForm = document.getElementById("leadForm");
+  const leadNotice = document.getElementById("leadNotice");
+  const leadSubmit = document.getElementById("leadSubmit");
+
+  let mode = "login";
+
+  // --- Помощники ---------------------------------------------------------
+
+  function token() {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  }
+
+  function setToken(value) {
+    if (value) localStorage.setItem(TOKEN_KEY, value);
+    else localStorage.removeItem(TOKEN_KEY);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
+
+  function formatDate(iso) {
+    try {
+      return new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Moscow"
+      }).format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  }
+
+  function notify(box, text, kind) {
+    box.textContent = text || "";
+    box.dataset.kind = text ? kind : "";
+    box.style.display = text ? "block" : "none";
+  }
+
+  // Телефон приводим к виду +7 (999) 123-45-67, как на сайте.
+  function formatPhone(value) {
+    let digits = String(value || "").replace(/\D/g, "");
+
+    if (digits.startsWith("7") || digits.startsWith("8")) digits = digits.slice(1);
+    digits = digits.slice(0, 10);
+
+    let out = "+7";
+    if (digits.length > 0) out += ` (${digits.slice(0, 3)}`;
+    if (digits.length >= 3) out += ")";
+    if (digits.length > 3) out += ` ${digits.slice(3, 6)}`;
+    if (digits.length > 6) out += `-${digits.slice(6, 8)}`;
+    if (digits.length > 8) out += `-${digits.slice(8, 10)}`;
+
+    return out;
+  }
+
+  async function api(path, { method = "GET", body, auth = false } = {}) {
+    const headers = {};
+
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (auth) headers.Authorization = `Bearer ${token()}`;
+
+    const response = await fetch(path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body)
+    });
+
+    let payload = {};
+    try { payload = await response.json(); } catch { payload = {}; }
+
+    return { status: response.status, payload };
+  }
+
+  // --- Вход и регистрация -------------------------------------------------
+
+  function setMode(next) {
+    mode = next;
+    const isLogin = next === "login";
+
+    tabLogin.dataset.active = String(isLogin);
+    tabRegister.dataset.active = String(!isLogin);
+    nameField.classList.toggle("hidden", isLogin);
+    submitBtn.textContent = isLogin ? "Войти" : "Зарегистрироваться";
+    passwordInput.autocomplete = isLogin ? "current-password" : "new-password";
+    notify(authNotice, "", "");
+  }
+
+  tabLogin.addEventListener("click", () => setMode("login"));
+  tabRegister.addEventListener("click", () => setMode("register"));
+
+  authForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    notify(authNotice, "", "");
+    submitBtn.disabled = true;
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    const name = nameInput.value.trim();
+
+    try {
+      const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const body = mode === "login" ? { email, password } : { email, password, name };
+      const { status, payload } = await api(path, { method: "POST", body });
+
+      if (!payload.ok) {
+        notify(authNotice, payload.error || "Не удалось выполнить запрос.", "error");
+        return;
+      }
+
+      // Если в Supabase включено подтверждение почты, сессии ещё нет.
+      if (payload.needsConfirmation) {
+        notify(authNotice, payload.message || "Подтвердите почту и войдите.", "ok");
+        return;
+      }
+
+      setToken(payload.token);
+      notify(authNotice, "", "");
+      await openCabinet();
+    } catch {
+      notify(authNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  // --- Кабинет ------------------------------------------------------------
+
+  function showAuth() {
+    cabinet.classList.add("hidden");
+    authView.classList.remove("hidden");
+    leadsBox.innerHTML = "";
+    stats.innerHTML = "";
+  }
+
+  async function openCabinet() {
+    const { status, payload } = await api("/api/me/leads", { auth: true });
+
+    if (status === 401 || !payload.ok) {
+      setToken("");
+      showAuth();
+      notify(authNotice, payload.error || "Войдите заново.", "error");
+      return;
+    }
+
+    authView.classList.add("hidden");
+    cabinet.classList.remove("hidden");
+
+    const user = payload.user || {};
+    who.innerHTML = `Вы вошли как <b>${escapeHtml(user.email || "")}</b>` +
+      (user.name ? ` · ${escapeHtml(user.name)}` : "");
+
+    render(payload.leads || []);
+  }
+
+  function render(leads) {
+    const counts = {};
+    for (const lead of leads) counts[lead.status] = (counts[lead.status] || 0) + 1;
+
+    stats.innerHTML = Object.entries(STATUS_LABELS).map(([value, label]) => `
+      <div class="stat"><b>${counts[value] || 0}</b><span>${escapeHtml(label)}</span></div>
+    `).join("");
+
+    if (leads.length === 0) {
+      leadsBox.innerHTML = '<div class="card empty">Заявок пока нет. Оставьте первую — мы свяжемся с вами.</div>';
+      return;
+    }
+
+    leadsBox.innerHTML = leads.map((lead) => `
+      <div class="lead">
+        <div class="lead-top">
+          <span class="lead-date">${escapeHtml(formatDate(lead.created_at))}</span>
+          <span class="badge ${escapeHtml(lead.status)}">${escapeHtml(STATUS_LABELS[lead.status] || lead.status)}</span>
+        </div>
+        <div class="lead-rows">
+          <div><b>Имя:</b> ${escapeHtml(lead.name)}</div>
+          <div><b>Телефон:</b> ${escapeHtml(lead.phone)}</div>
+          <div><b>Услуга:</b> ${escapeHtml(lead.service || "не выбрана")}</div>
+          ${lead.message ? `<div><b>Сообщение:</b> ${escapeHtml(lead.message)}</div>` : ""}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", () => openCabinet());
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    try {
+      await api("/api/auth/login", { method: "DELETE", auth: true });
+    } catch { /* выходим локально в любом случае */ }
+
+    setToken("");
+    showAuth();
+    notify(authNotice, "Вы вышли из кабинета.", "ok");
+  });
+
+  // --- Новая заявка из кабинета -------------------------------------------
+
+  const leadPhone = document.getElementById("leadPhone");
+  leadPhone.addEventListener("input", () => { leadPhone.value = formatPhone(leadPhone.value); });
+  leadPhone.addEventListener("focus", () => { leadPhone.value = formatPhone(leadPhone.value); });
+
+  leadForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    notify(leadNotice, "", "");
+    leadSubmit.disabled = true;
+
+    const phoneDigits = leadPhone.value.replace(/\D/g, "");
+
+    if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
+      notify(leadNotice, "Введите полный номер в формате +7 (999) 123-45-67.", "error");
+      leadPhone.focus();
+      leadSubmit.disabled = false;
+      return;
+    }
+
+    try {
+      const { status, payload } = await api("/api/me/leads", {
+        method: "POST",
+        auth: true,
+        body: {
+          name: document.getElementById("leadName").value.trim(),
+          phone: leadPhone.value.trim(),
+          service: document.getElementById("leadService").value,
+          message: document.getElementById("leadMessage").value.trim()
+        }
+      });
+
+      if (status === 401) {
+        setToken("");
+        showAuth();
+        notify(authNotice, "Сессия истекла, войдите заново.", "error");
+        return;
+      }
+
+      if (!payload.ok) {
+        notify(leadNotice, payload.error || "Не удалось отправить заявку.", "error");
+        return;
+      }
+
+      leadForm.reset();
+      leadPhone.value = "+7 ";
+      notify(leadNotice, "Заявка отправлена. Мы свяжемся с вами.", "ok");
+      await openCabinet();
+    } catch {
+      notify(leadNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
+    } finally {
+      leadSubmit.disabled = false;
+    }
+  });
+
+  // --- Старт --------------------------------------------------------------
+
+  leadPhone.value = "+7 ";
+
+  if (token()) openCabinet(); else showAuth();
+</script>
+</body>
+</html>

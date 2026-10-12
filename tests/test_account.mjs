@@ -1,0 +1,418 @@
+// Тесты регистрации, входа и личного кабинета.
+//
+// Запуск: node it-doktor/tests/test_account.mjs
+//
+// Сеть не используется: Supabase Auth и база подменяются заглушками.
+// Главная проверка — клиент видит только свои заявки.
+
+import assert from "node:assert/strict";
+import { onRequest as register } from "../functions/api/auth/register.js";
+import { onRequest as login } from "../functions/api/auth/login.js";
+import { onRequest as accountLeads } from "../functions/api/me/leads.js";
+
+const ENV = {
+  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_TEST",
+  SUPABASE_SECRET_KEY: "sb_secret_TEST"
+};
+
+let passed = 0;
+let failed = 0;
+
+async function test(name, fn) {
+  try {
+    await fn();
+    console.log(`  OK     ${name}`);
+    passed += 1;
+  } catch (error) {
+    console.log(`  ПРОВАЛ ${name}: ${error.message}`);
+    failed += 1;
+  }
+}
+
+// --- Заглушки -----------------------------------------------------------
+
+// Пользователи в «базе» Supabase Auth: email -> { id, password, name }
+const users = new Map();
+// Заявки в «базе»: массив строк таблицы leads
+let leads = [];
+// Все обращения к базе заявок
+let leadQueries = [];
+let signupDisabled = false;
+
+const TOKEN_PREFIX = "token-for-";
+
+globalThis.fetch = async (url, options = {}) => {
+  const target = String(url);
+  const method = options.method || "GET";
+  const body = options.body ? JSON.parse(options.body) : {};
+  const authHeader = (options.headers || {}).Authorization || "";
+
+  // --- Supabase Auth ---
+  if (target.includes("/auth/v1/signup")) {
+    if (signupDisabled) {
+      return new Response(JSON.stringify({ msg: "Email signups are disabled" }), { status: 422 });
+    }
+
+    if (users.has(body.email)) {
+      return new Response(JSON.stringify({ msg: "User already registered" }), { status: 422 });
+    }
+
+    const id = `user-${users.size + 1}`;
+    users.set(body.email, { id, password: body.password, name: body.data?.name || "" });
+
+    return new Response(JSON.stringify({
+      access_token: `${TOKEN_PREFIX}${id}`,
+      expires_in: 3600,
+      user: { id, email: body.email, user_metadata: { name: body.data?.name || "" } }
+    }), { status: 200 });
+  }
+
+  if (target.includes("/auth/v1/token?grant_type=password")) {
+    const record = users.get(body.email);
+
+    if (!record || record.password !== body.password) {
+      return new Response(JSON.stringify({ error_description: "Invalid login credentials" }), { status: 400 });
+    }
+
+    return new Response(JSON.stringify({
+      access_token: `${TOKEN_PREFIX}${record.id}`,
+      expires_in: 3600,
+      user: { id: record.id, email: body.email, user_metadata: { name: record.name } }
+    }), { status: 200 });
+  }
+
+  if (target.includes("/auth/v1/user")) {
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const id = token.replace(TOKEN_PREFIX, "");
+    const record = [...users.entries()].find(([, value]) => value.id === id);
+
+    if (!record) {
+      return new Response(JSON.stringify({ message: "invalid token" }), { status: 401 });
+    }
+
+    return new Response(JSON.stringify({
+      id,
+      email: record[0],
+      user_metadata: { name: record[1].name }
+    }), { status: 200 });
+  }
+
+  if (target.includes("/auth/v1/logout")) {
+    return new Response("{}", { status: 204 });
+  }
+
+  // --- Таблица leads ---
+  if (target.includes("/rest/v1/leads")) {
+    const parsed = new URL(target);
+    const filter = parsed.searchParams.get("user_id");
+    leadQueries.push({ method, url: target, body: method === "POST" ? body : null });
+
+    if (method === "GET") {
+      // Сервер обязан запросить только заявки конкретного пользователя.
+      const owner = filter?.replace("eq.", "");
+      const rows = leads.filter((lead) => lead.user_id === owner);
+      return new Response(JSON.stringify(rows), { status: 200 });
+    }
+
+    if (method === "POST") {
+      const row = { id: `lead-${leads.length + 1}`, created_at: new Date().toISOString(), ...body };
+      leads.push(row);
+      return new Response(JSON.stringify([row]), { status: 201 });
+    }
+  }
+
+  throw new Error(`неожиданный запрос: ${target}`);
+};
+
+// --- Помощники ----------------------------------------------------------
+
+function post(body, headers = {}) {
+  return new Request("https://it-doctor.pages.dev/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body)
+  });
+}
+
+function get(headers = {}) {
+  return new Request("https://it-doctor.pages.dev/api/me/leads", { method: "GET", headers });
+}
+
+function withToken(token) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+function reset() {
+  users.clear();
+  leads = [];
+  leadQueries = [];
+  signupDisabled = false;
+}
+
+/** Регистрирует пользователя через боевую функцию и возвращает токен. */
+async function registerUser(email, password, name) {
+  const response = await register({ request: post({ email, password, name }), env: ENV });
+  const payload = await response.json();
+  return payload;
+}
+
+console.log("Тесты регистрации и личного кабинета\n");
+
+// --- Регистрация --------------------------------------------------------
+
+await test("регистрация выдаёт токен и создаёт пользователя", async () => {
+  reset();
+  const payload = await registerUser("client@example.com", "secret123", "Иван");
+
+  assert.equal(payload.ok, true);
+  assert.ok(payload.token, "должен вернуться токен");
+  assert.equal(payload.user.email, "client@example.com");
+  assert.equal(users.size, 1);
+});
+
+await test("пароль не возвращается клиенту и не логируется", async () => {
+  reset();
+  const response = await register({ request: post({ email: "a@b.ru", password: "supersecret" }), env: ENV });
+  const text = await response.text();
+
+  assert.doesNotMatch(text, /supersecret/, "пароль не должен попадать в ответ");
+});
+
+await test("повторная регистрация той же почты отклоняется", async () => {
+  reset();
+  await registerUser("dup@example.com", "secret123");
+  const second = await registerUser("dup@example.com", "secret123");
+
+  assert.equal(second.ok, false);
+  assert.match(second.error, /уже зарегистрирована/i);
+});
+
+await test("некорректная почта отклоняется", async () => {
+  reset();
+  const payload = await registerUser("не-почта", "secret123");
+  assert.equal(payload.ok, false);
+  assert.match(payload.error, /почт/i);
+});
+
+await test("короткий пароль отклоняется", async () => {
+  reset();
+  const payload = await registerUser("short@example.com", "123");
+  assert.equal(payload.ok, false);
+  assert.match(payload.error, /6 символов/);
+});
+
+await test("почта приводится к нижнему регистру", async () => {
+  reset();
+  const payload = await registerUser("MiXeD@Example.COM", "secret123");
+  assert.equal(payload.ok, true);
+  assert.equal(payload.user.email, "mixed@example.com");
+});
+
+// --- Вход ---------------------------------------------------------------
+
+await test("вход с верным паролем выдаёт токен", async () => {
+  reset();
+  await registerUser("login@example.com", "secret123");
+
+  const response = await login({
+    request: post({ email: "login@example.com", password: "secret123" }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(payload.token);
+});
+
+await test("неверный пароль даёт понятную ошибку и код 401", async () => {
+  reset();
+  await registerUser("wrong@example.com", "secret123");
+
+  const response = await login({
+    request: post({ email: "wrong@example.com", password: "не тот" }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(response.status, 401);
+  assert.match(payload.error, /Неверная почта или пароль/);
+});
+
+await test("выход вызывает отзыв сессии", async () => {
+  reset();
+  const { token } = await registerUser("out@example.com", "secret123");
+
+  const response = await login({
+    request: new Request("https://x/api/auth/login", { method: "DELETE", headers: withToken(token) }),
+    env: ENV
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).ok, true);
+});
+
+// --- Личный кабинет: доступ --------------------------------------------
+
+await test("без токена кабинет закрыт", async () => {
+  reset();
+  const response = await accountLeads({ request: get(), env: ENV });
+
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).ok, false);
+});
+
+await test("подделанный токен не пускает в кабинет", async () => {
+  reset();
+  // В заголовках допустимы только латинские символы, поэтому токен чужой формы.
+  const response = await accountLeads({ request: get(withToken("token-for-foreign-user")), env: ENV });
+
+  assert.equal(response.status, 401);
+});
+
+await test("пользователь видит только свои заявки", async () => {
+  reset();
+
+  const first = await registerUser("one@example.com", "secret123", "Первый");
+  const second = await registerUser("two@example.com", "secret123", "Второй");
+
+  // Каждый оставляет по заявке через боевую функцию.
+  await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...withToken(first.token) },
+      body: JSON.stringify({ name: "Первый", phone: "+7 (900) 111-11-11", service: "Диагностика" })
+    }),
+    env: ENV
+  });
+
+  await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...withToken(second.token) },
+      body: JSON.stringify({ name: "Второй", phone: "+7 (900) 222-22-22", service: "Чистка" })
+    }),
+    env: ENV
+  });
+
+  assert.equal(leads.length, 2, "в базе должно быть две заявки");
+
+  const firstView = await accountLeads({ request: get(withToken(first.token)), env: ENV });
+  const firstPayload = await firstView.json();
+
+  const secondView = await accountLeads({ request: get(withToken(second.token)), env: ENV });
+  const secondPayload = await secondView.json();
+
+  assert.equal(firstPayload.leads.length, 1, "первый видит ровно одну свою заявку");
+  assert.equal(firstPayload.leads[0].phone, "+7 (900) 111-11-11");
+
+  assert.equal(secondPayload.leads.length, 1, "второй видит ровно одну свою заявку");
+  assert.equal(secondPayload.leads[0].phone, "+7 (900) 222-22-22");
+
+  // Ни один не видит чужую заявку.
+  assert.ok(
+    !firstPayload.leads.some((lead) => lead.phone === "+7 (900) 222-22-22"),
+    "первый не должен видеть заявку второго"
+  );
+});
+
+await test("фильтр по владельцу задаёт сервер, а не клиент", async () => {
+  reset();
+  const { token } = await registerUser("owner@example.com", "secret123");
+
+  leadQueries = [];
+  await accountLeads({ request: get(withToken(token)), env: ENV });
+
+  const query = leadQueries.find((call) => call.method === "GET");
+  assert.ok(query, "должен быть запрос к базе");
+  assert.match(query.url, /user_id=eq\.user-1/, "фильтр должен идти от проверенного токена");
+});
+
+await test("попытка навязать чужой user_id игнорируется", async () => {
+  reset();
+  const { token } = await registerUser("hacker@example.com", "secret123");
+
+  const response = await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...withToken(token) },
+      body: JSON.stringify({
+        name: "Хакер",
+        phone: "+7 (900) 000-00-00",
+        // Пытаемся подсунуть чужого владельца заявки.
+        user_id: "user-999"
+      })
+    }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(payload.ok, true);
+  assert.equal(payload.lead.user_id, "user-1", "владелец должен быть из токена");
+});
+
+// --- Новая заявка из кабинета ------------------------------------------
+
+await test("заявка из кабинета помечается источником account", async () => {
+  reset();
+  const { token } = await registerUser("source@example.com", "secret123");
+
+  const response = await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...withToken(token) },
+      body: JSON.stringify({ name: "Клиент", phone: "+7 (900) 333-33-33" })
+    }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(payload.lead.source, "account");
+  assert.equal(payload.lead.status, "new", "у новой заявки статус new");
+});
+
+await test("заявка без имени или телефона отклоняется", async () => {
+  reset();
+  const { token } = await registerUser("empty@example.com", "secret123");
+
+  const response = await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...withToken(token) },
+      body: JSON.stringify({ name: "Без телефона" })
+    }),
+    env: ENV
+  });
+
+  assert.equal(response.status, 422);
+});
+
+await test("создать заявку без входа нельзя", async () => {
+  reset();
+
+  const response = await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Аноним", phone: "+7 (900) 444-44-44" })
+    }),
+    env: ENV
+  });
+
+  assert.equal(response.status, 401);
+  assert.equal(leads.length, 0, "в базу ничего не должно попасть");
+});
+
+await test("в ответе нет служебных ключей", async () => {
+  reset();
+  const { token } = await registerUser("secret@example.com", "secret123");
+  const response = await accountLeads({ request: get(withToken(token)), env: ENV });
+  const text = await response.text();
+
+  assert.doesNotMatch(text, /sb_secret_TEST/, "секретный ключ не должен утекать");
+  assert.doesNotMatch(text, /example\.supabase\.co/, "адрес базы тоже не нужен клиенту");
+});
+
+console.log(`\nИтог: пройдено ${passed}, провалено ${failed}`);
+process.exit(failed === 0 ? 0 : 1);
