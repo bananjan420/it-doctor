@@ -24,6 +24,9 @@ export const STATUS_LABELS = {
   completed: "Завершена"
 };
 
+// Источники заявки. Совпадают с типом lead_source в базе.
+export const SOURCES = ["website", "mini_app", "telegram_bot"];
+
 // Поля, которые можно отдавать в браузер. Служебные (например updated_at) не нужны.
 const LEAD_COLUMNS = [
   "id",
@@ -125,7 +128,18 @@ async function handleList(request, env, origin) {
   }
 
   const url = new URL(request.url);
+
+  // Список услуг для выпадающего фильтра — отдельный запрос, без заявок.
+  if (url.searchParams.get("facets") === "1") {
+    return await handleServices(env, origin);
+  }
+
   const status = url.searchParams.get("status");
+  const source = url.searchParams.get("source");
+  const service = url.searchParams.get("service");
+  const search = (url.searchParams.get("q") || "").trim();
+  const from = url.searchParams.get("from");
+  const to = url.searchParams.get("to");
 
   // Сортировка по столбцу таблицы. Разрешены только известные поля:
   // произвольную строку в запрос к базе не пускаем.
@@ -147,6 +161,44 @@ async function handleList(request, env, origin) {
 
   if (status && STATUSES.includes(status)) {
     params.set("status", `eq.${status}`);
+  }
+
+  if (source && SOURCES.includes(source)) {
+    params.set("source", `eq.${source}`);
+  }
+
+  // Услуга: отдельно обрабатываем «не выбрана» (в базе это пустое значение).
+  if (service === "none") {
+    params.set("service", "is.null");
+  } else if (service) {
+    params.set("service", `eq.${service}`);
+  }
+
+  // Поиск по имени и телефону: клиент мог набрать часть имени или цифры.
+  if (search) {
+    // Оставляем только буквы, цифры и символы телефона. Так посторонние знаки
+    // не смогут изменить синтаксис фильтра PostgREST.
+    const safe = search.replace(/[^\p{L}\p{N}\s+()-]/gu, " ").replace(/\s+/g, " ").trim();
+    if (safe) {
+      params.set("or", `(name.ilike.*${safe}*,phone.ilike.*${safe}*)`);
+    }
+  }
+
+  // Произвольный период. Даты приходят как 2026-10-07, конец дня включаем целиком.
+  const fromDate = parseDate(from);
+  const toDate = parseDate(to);
+
+  if (fromDate) {
+    params.set("created_at", `gte.${fromDate}T00:00:00`);
+  }
+
+  if (toDate) {
+    if (params.has("created_at")) {
+      // Диапазон задаётся двумя параметрами: PostgREST это поддерживает.
+      params.append("created_at", `lte.${toDate}T23:59:59.999`);
+    } else {
+      params.set("created_at", `lte.${toDate}T23:59:59.999`);
+    }
   }
 
   const response = await supabase(env, `/rest/v1/leads?${params.toString()}`, {
@@ -221,6 +273,76 @@ async function handleStatusUpdate(request, env, origin) {
   }
 
   return json(200, { ok: true, lead: updated[0] }, origin);
+}
+
+// --- Справочник услуг для фильтра ---------------------------------------
+
+/**
+ * Отдаёт список услуг, которые реально встречаются в заявках.
+ *
+ * Берём из базы только колонку service, поэтому запрос лёгкий даже при
+ * большом количестве заявок. Отдельно сообщаем, есть ли заявки без услуги.
+ */
+async function handleServices(env, origin) {
+  const params = new URLSearchParams({
+    select: "service",
+    order: "service.asc",
+    limit: "1000"
+  });
+
+  const response = await supabase(env, `/rest/v1/leads?${params.toString()}`, {
+    method: "GET"
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    console.error("Supabase services failed", {
+      status: response.status,
+      detail: detail.slice(0, 200)
+    });
+    return json(502, { ok: false, error: "Не удалось получить список услуг" }, origin);
+  }
+
+  const rows = await response.json();
+  const services = [];
+  let hasEmpty = false;
+
+  for (const row of rows) {
+    const value = String(row.service ?? "").trim();
+
+    if (!value) {
+      hasEmpty = true;
+      continue;
+    }
+
+    if (!services.includes(value)) {
+      services.push(value);
+    }
+  }
+
+  services.sort((a, b) => a.localeCompare(b, "ru"));
+
+  return json(200, { ok: true, services, hasEmpty }, origin);
+}
+
+// --- Проверка параметров ------------------------------------------------
+
+/** Принимает только существующую дату вида 2026-10-07, иначе возвращает null. */
+function parseDate(value) {
+  const text = String(value || "").trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return null;
+  }
+
+  const date = new Date(`${text}T00:00:00Z`);
+
+  // Отсекаем несуществующие даты вроде 2026-99-99 или 2026-02-31.
+  if (Number.isNaN(date.getTime()) || !date.toISOString().startsWith(text)) {
+    return null;
+  }
+
+  return text;
 }
 
 // --- Supabase -----------------------------------------------------------

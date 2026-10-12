@@ -36,9 +36,9 @@ let failNext = false;
 function seedLeads() {
   db.length = 0;
   db.push(
-    { id: "1", created_at: "2026-10-07T15:00:44+00:00", name: "Mini", phone: "+7 (900) 000-00-01", service: "Термопаста", message: "текст", source: "mini_app", status: "new" },
-    { id: "2", created_at: "2026-10-07T14:58:37+00:00", name: "Сайт", phone: "+7 (900) 000-00-02", service: "Не выбрана", message: "текст", source: "website", status: "new" },
-    { id: "3", created_at: "2026-10-06T10:00:00+00:00", name: "Бот", phone: "+7 (900) 000-00-03", service: "Диагностика", message: null, source: "telegram_bot", status: "completed" }
+    { id: "1", created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(), name: "Mini", phone: "+7 (900) 000-00-01", service: "Термопаста", message: "текст", source: "mini_app", status: "new" },
+    { id: "2", created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), name: "Сайт", phone: "+7 (900) 000-00-02", service: "Не выбрана", message: "текст", source: "website", status: "new" },
+    { id: "3", created_at: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(), name: "Бот", phone: "+7 (900) 000-00-03", service: null, message: null, source: "telegram_bot", status: "completed" }
   );
 }
 
@@ -58,6 +58,12 @@ globalThis.fetch = async (url, options = {}) => {
   const method = options.method || "GET";
 
   if (method === "GET") {
+    // Запрос справочника услуг для фильтра: отдаём только колонку service.
+    if (target.includes("select=service")) {
+      const rows = db.map((lead) => ({ service: lead.service }));
+      return new Response(JSON.stringify(rows), { status: 200 });
+    }
+
     // Проверяем, что список запрошен «новые сверху».
     assert.match(target, /order=created_at\.desc/, "должна быть сортировка по дате убыванием");
     return new Response(JSON.stringify(db), { status: 200 });
@@ -348,6 +354,142 @@ await test("без параметров сортировки порядок по
 
   const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
   assert.match(query, /order=created_at\.desc/);
+});
+
+await test("фильтр по источнику уходит в запрос к базе", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({ request: request("GET", { cookie, query: "?source=mini_app" }), env: ENV });
+
+  assert.ok(
+    supabaseCalls.some((call) => call.url.includes("source=eq.mini_app")),
+    "фильтр по источнику должен попасть в запрос"
+  );
+
+  // Значения вне списка игнорируются.
+  supabaseCalls = [];
+  await onRequest({ request: request("GET", { cookie, query: "?source=чужое" }), env: ENV });
+  assert.ok(
+    !supabaseCalls.some((call) => call.url.includes("source=eq.")),
+    "чуждый источник не должен попадать в запрос"
+  );
+});
+
+await test("фильтр по услуге и по «не выбрана»", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  supabaseCalls = [];
+  await onRequest({
+    request: request("GET", { cookie, query: "?service=" + encodeURIComponent("Диагностика") }),
+    env: ENV
+  });
+  assert.ok(
+    supabaseCalls.some((call) => call.url.includes("service=eq.")),
+    "выбранная услуга должна попасть в запрос"
+  );
+
+  supabaseCalls = [];
+  await onRequest({ request: request("GET", { cookie, query: "?service=none" }), env: ENV });
+  assert.ok(
+    supabaseCalls.some((call) => call.url.includes("service=is.null")),
+    "«не выбрана» должна превращаться в проверку пустого значения"
+  );
+});
+
+await test("поиск по имени и телефону уходит в запрос", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({ request: request("GET", { cookie, query: "?q=Иван" }), env: ENV });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  assert.match(query, /name\.ilike/, "должен быть поиск по имени");
+  assert.match(query, /phone\.ilike/, "должен быть поиск по телефону");
+});
+
+await test("опасные символы в поиске не ломают запрос", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?q=" + encodeURIComponent("Иван,status.eq.completed") }),
+    env: ENV
+  });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  assert.doesNotMatch(query, /status\.eq\.completed/, "скобки и запятые должны вычищаться");
+});
+
+await test("произвольный промежуток дат уходит в запрос", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?from=2026-10-01&to=2026-10-07" }),
+    env: ENV
+  });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  const decoded = decodeURIComponent(query);
+  assert.match(decoded, /created_at=gte\.2026-10-01T00:00:00/, "должна быть нижняя граница");
+  assert.match(decoded, /created_at=lte\.2026-10-07T23:59:59/, "должна быть верхняя граница включительно");
+});
+
+await test("некорректные даты игнорируются", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?from=вчера&to=2026-99-99" }),
+    env: ENV
+  });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  assert.doesNotMatch(decodeURIComponent(query), /created_at=/, "фильтр по датам не должен применяться");
+});
+
+await test("фильтры и сортировка работают вместе", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", {
+      cookie,
+      query: "?status=new&source=website&sort=name&dir=asc&from=2026-10-01"
+    }),
+    env: ENV
+  });
+
+  const decoded = decodeURIComponent(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
+  );
+  assert.match(decoded, /status=eq\.new/);
+  assert.match(decoded, /source=eq\.website/);
+  assert.match(decoded, /order=name\.asc/);
+  assert.match(decoded, /created_at=gte\.2026-10-01/);
+});
+
+await test("справочник услуг для фильтра отдаётся отдельно", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  const response = await onRequest({
+    request: request("GET", { cookie, query: "?facets=1" }),
+    env: ENV
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.deepEqual(payload.services, ["Не выбрана", "Термопаста"], "услуги без повторов и пустых");
+  assert.equal(payload.hasEmpty, true, "должно быть отмечено, что есть заявки без услуги");
 });
 
 await test("ошибка базы не ломает API", async () => {
