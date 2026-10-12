@@ -24,7 +24,7 @@ export const STATUS_LABELS = {
   completed: "Завершена"
 };
 
-// Поля, которые отдаём в браузер. Служебные (например updated_at) не нужны.
+// Поля, которые можно отдавать в браузер. Служебные (например updated_at) не нужны.
 const LEAD_COLUMNS = [
   "id",
   "created_at",
@@ -35,6 +35,16 @@ const LEAD_COLUMNS = [
   "source",
   "status"
 ].join(",");
+
+// Столбцы, по которым разрешено сортировать: имя параметра -> колонка в базе.
+const SORTABLE_FIELDS = {
+  date: "created_at",
+  name: "name",
+  phone: "phone",
+  service: "service",
+  source: "source",
+  status: "status"
+};
 
 export async function onRequest({ request, env }) {
   const url = new URL(request.url);
@@ -117,10 +127,21 @@ async function handleList(request, env, origin) {
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
 
+  // Сортировка по столбцу таблицы. Разрешены только известные поля:
+  // произвольную строку в запрос к базе не пускаем.
+  const sort = SORTABLE_FIELDS[url.searchParams.get("sort")] || null;
+  const direction = url.searchParams.get("dir") === "asc" ? "asc" : "desc";
+
   const params = new URLSearchParams({
     select: LEAD_COLUMNS,
-    // Новые заявки сверху.
-    order: "created_at.desc",
+    // Без явной сортировки всегда показываем новые заявки сверху.
+    // Вторичная сортировка по дате нужна, чтобы заявки с одинаковым значением
+    // выбранного столбца не прыгали при обновлении страницы.
+    order: !sort
+      ? "created_at.desc"
+      : sort === "created_at"
+        ? `created_at.${direction}`
+        : `${sort}.${direction},created_at.desc`,
     limit: "500"
   });
 

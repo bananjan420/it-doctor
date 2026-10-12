@@ -263,6 +263,93 @@ await test("фильтр по статусу уходит в запрос к б�
   );
 });
 
+await test("сортировка по дате уходит в базу в нужную сторону", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  supabaseCalls = [];
+  await onRequest({ request: request("GET", { cookie, query: "?sort=date&dir=asc" }), env: ENV });
+  assert.ok(
+    supabaseCalls.some((call) => call.url.includes("order=created_at.asc")),
+    "ожидалась сортировка по дате по возрастанию"
+  );
+
+  supabaseCalls = [];
+  await onRequest({ request: request("GET", { cookie, query: "?sort=date&dir=desc" }), env: ENV });
+  assert.ok(
+    supabaseCalls.some((call) => call.url.includes("order=created_at.desc")),
+    "ожидалась сортировка по дате по убыванию"
+  );
+});
+
+await test("сортировка работает по каждому столбцу", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  const columns = {
+    name: "name",
+    phone: "phone",
+    service: "service",
+    source: "source",
+    status: "status"
+  };
+
+  for (const [sortKey, column] of Object.entries(columns)) {
+    supabaseCalls = [];
+    await onRequest({
+      request: request("GET", { cookie, query: `?sort=${sortKey}&dir=asc` }),
+      env: ENV
+    });
+
+    const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+    assert.match(query, new RegExp(`order=${column}\\.asc`), `столбец ${column}`);
+    // Вторичная сортировка стабилизирует порядок одинаковых значений.
+    assert.match(query, /created_at\.desc/, "нужна вторичная сортировка по дате");
+  }
+});
+
+await test("неизвестный столбец сортировки игнорируется", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  supabaseCalls = [];
+  await onRequest({
+    request: request("GET", { cookie, query: "?sort=password&dir=asc" }),
+    env: ENV
+  });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  // Произвольная строка в запрос к базе попасть не должна.
+  assert.doesNotMatch(query, /password/);
+  assert.match(query, /order=created_at\.desc/, "должна остаться сортировка по умолчанию");
+});
+
+await test("попытка внедрить SQL через сортировку не проходит", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  supabaseCalls = [];
+  await onRequest({
+    request: request("GET", { cookie, query: "?sort=name.desc%2Cstatus&dir=asc" }),
+    env: ENV
+  });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  assert.doesNotMatch(query, /name\.desc,status/);
+  assert.match(query, /order=created_at\.desc/);
+});
+
+await test("без параметров сортировки порядок по умолчанию сохраняется", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  supabaseCalls = [];
+  await onRequest({ request: request("GET", { cookie }), env: ENV });
+
+  const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
+  assert.match(query, /order=created_at\.desc/);
+});
+
 await test("ошибка базы не ломает API", async () => {
   seedLeads();
   const cookie = await login();

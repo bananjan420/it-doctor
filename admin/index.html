@@ -140,6 +140,25 @@
 
     .msg { color: var(--muted); font-size: 13px; max-width: 320px; }
 
+    /* Кликабельные заголовки: сортировка по столбцу */
+    button.sort {
+      all: unset;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 0;
+    }
+
+    button.sort:hover { color: var(--text); }
+    button.sort[data-active="true"] { color: var(--text); font-weight: 600; }
+
+    button.sort .arrow { font-size: 11px; opacity: .7; }
+    button.sort[data-active="true"] .arrow { opacity: 1; }
+
     .muted { color: var(--muted); }
     .empty { padding: 32px; text-align: center; color: var(--muted); }
     .saved { color: var(--ok); font-size: 13px; margin-left: 8px; }
@@ -177,13 +196,13 @@
       <table>
         <thead>
           <tr>
-            <th>Дата</th>
-            <th>Имя</th>
-            <th>Телефон</th>
-            <th>Услуга</th>
+            <th><button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button></th>
+            <th><button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button></th>
+            <th><button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button></th>
+            <th><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button></th>
             <th>Сообщение</th>
-            <th>Источник</th>
-            <th>Статус</th>
+            <th><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button></th>
+            <th><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -220,6 +239,24 @@
 
   let statuses = STATUS_ORDER.map((value) => ({ value, label: STATUS_LABELS[value] }));
 
+  // Текущая сортировка. По умолчанию — новые заявки сверху.
+  // Выбор запоминается в sessionStorage, чтобы пережить обновление страницы.
+  const DEFAULT_SORT = { key: "date", dir: "desc" };
+
+  function readSort() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("itd_admin_sort") || "null");
+      if (saved && ["date", "name", "phone", "service", "source", "status"].includes(saved.key)) {
+        return { key: saved.key, dir: saved.dir === "asc" ? "asc" : "desc" };
+      }
+    } catch {
+      // ignore
+    }
+    return { ...DEFAULT_SORT };
+  }
+
+  let sort = readSort();
+
   // --- Помощники ---------------------------------------------------------
 
   function formatDate(iso) {
@@ -242,7 +279,7 @@
       .replaceAll('"', "&quot;");
   }
 
-  async function api(method, body) {
+  async function api(method, body, query) {
     const options = { method, credentials: "same-origin", headers: {} };
 
     if (body !== undefined) {
@@ -250,7 +287,7 @@
       options.body = JSON.stringify(body);
     }
 
-    const response = await fetch("/api/leads", options);
+    const response = await fetch(`/api/leads${query || ""}`, options);
     let payload = {};
 
     try {
@@ -261,6 +298,23 @@
 
     return { status: response.status, payload };
   }
+
+  function currentQuery() {
+    return `?sort=${encodeURIComponent(sort.key)}&dir=${encodeURIComponent(sort.dir)}`;
+  }
+
+  /** Обновляет стрелки у заголовков таблицы. */
+  function renderSortIndicators() {
+    document.querySelectorAll("button.sort").forEach((button) => {
+      const active = button.dataset.sort === sort.key;
+      button.dataset.active = active ? "true" : "false";
+      const arrow = button.querySelector(".arrow");
+      if (arrow) {
+        arrow.textContent = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
+      }
+    });
+  }
+
 
   // --- Вход --------------------------------------------------------------
 
@@ -293,7 +347,8 @@
   // --- Загрузка списка ---------------------------------------------------
 
   async function load() {
-    const { status, payload } = await api("GET");
+    renderSortIndicators();
+    const { status, payload } = await api("GET", undefined, currentQuery());
 
     if (status === 401) {
       sessionStorage.removeItem("itd_admin_key");
@@ -408,6 +463,23 @@
     const select = event.target.closest('[data-role="status"]');
     if (!select) return;
     changeStatus(select.closest("tr"), select);
+  });
+
+  // Клик по заголовку: первый раз сортирует по возрастанию, повторный — по убыванию.
+  // Клик по другому столбцу начинает с убывания для даты и с возрастания для остальных.
+  document.querySelector("thead").addEventListener("click", (event) => {
+    const button = event.target.closest("button.sort");
+    if (!button) return;
+
+    const key = button.dataset.sort;
+    if (sort.key === key) {
+      sort.dir = sort.dir === "asc" ? "desc" : "asc";
+    } else {
+      sort = { key, dir: key === "date" ? "desc" : "asc" };
+    }
+
+    sessionStorage.setItem("itd_admin_sort", JSON.stringify(sort));
+    load();
   });
 
   // --- Старт -------------------------------------------------------------
