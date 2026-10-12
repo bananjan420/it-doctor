@@ -4,204 +4,302 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0B0E14" />
   <title>Заявки — IT Doctor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
+    /* Оформление повторяет клиентский сайт: те же цвета, шрифт и радиусы. */
     :root {
-      --bg: #0b1220;
-      --panel: #151d2e;
-      --panel-2: #1c2639;
-      --border: #26314a;
-      --text: #e8edf7;
-      --muted: #93a1bd;
-      --accent: #3b82f6;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --ready: #06b6d4;
-      --done: #64748b;
-      --danger: #ef4444;
+      --bg-primary: #0B0E14;
+      --bg-secondary: #0F141C;
+      --bg-card: #151A24;
+      --bg-card-hover: #1A2130;
+      --accent: #00D4FF;
+      --accent-secondary: #0072FF;
+      --accent-gradient: linear-gradient(135deg, #00D4FF 0%, #0072FF 100%);
+      --text-primary: #FFFFFF;
+      --text-secondary: #A0AEC0;
+      --text-muted: #6B7A8D;
+      --border: rgba(0, 212, 255, 0.15);
+      --border-strong: rgba(0, 212, 255, 0.35);
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      --shadow-accent: 0 8px 32px rgba(0, 212, 255, 0.25);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: 0.3s ease;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: 24px 16px 64px;
-      background: var(--bg);
-      color: var(--text);
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 32px 20px 72px;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(0, 212, 255, 0.08), transparent 45%),
+        radial-gradient(circle at 85% 10%, rgba(0, 114, 255, 0.08), transparent 45%),
+        var(--bg-primary);
+      min-height: 100vh;
+      color: var(--text-primary);
+      font: 16px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    .wrap { max-width: 1200px; margin: 0 auto; }
+    .wrap { max-width: 1400px; margin: 0 auto; }
 
-    header.top {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-
-    h1 { font-size: 22px; margin: 0; }
-    .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
-
+    /* --- Кнопки --- */
     button {
       font: inherit;
       cursor: pointer;
-      border-radius: 10px;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
+      background: var(--bg-card);
+      color: var(--text-primary);
       padding: 10px 16px;
+      transition: all var(--transition);
     }
 
-    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:hover { border-color: var(--border-strong); background: var(--bg-card-hover); }
+
+    button.primary {
+      background: var(--accent-gradient);
+      border: none;
+      color: #04121A;
+      font-weight: 700;
+      box-shadow: var(--shadow-accent);
+    }
+
+    button.primary:hover { filter: brightness(1.08); }
     button:disabled { opacity: .6; cursor: default; }
 
     .card {
-      background: var(--panel);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
     }
 
     /* --- Вход --- */
-    #login { max-width: 420px; margin: 10vh auto 0; }
-    #login h1 { margin-bottom: 6px; }
-    #login p { color: var(--muted); margin: 0 0 18px; }
+    #login { max-width: 420px; margin: 12vh auto 0; text-align: center; }
 
-    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    .brand {
+      width: 58px; height: 58px; margin: 0 auto 16px;
+      border-radius: 16px;
+      background: var(--accent-gradient);
+      color: #04121A;
+      font-weight: 800; font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-accent);
+    }
 
-    input[type="password"] {
+    #login h1 {
+      font-size: 24px; margin: 0 0 8px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #login p { color: var(--text-secondary); margin: 0 0 22px; font-size: 14px; }
+
+    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-align: left; letter-spacing: .02em; text-transform: uppercase; }
+
+    input[type="password"], input[type="date"], input[type="search"], input[type="text"], select {
       width: 100%;
-      padding: 12px 14px;
-      border-radius: 10px;
+      padding: 11px 13px;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
       font: inherit;
-      margin-bottom: 14px;
+      transition: border-color var(--transition);
     }
 
-    .error { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 10px; }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    input::placeholder { color: var(--text-muted); }
+    input[type="password"] { margin-bottom: 14px; }
 
-    /* --- Статистика --- */
-    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .error { color: #FF6B6B; font-size: 14px; min-height: 20px; margin-top: 12px; }
+
+    /* --- Шапка панели --- */
+    header.top {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      align-items: center; justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    header.top h1 { font-size: 26px; margin: 0; font-weight: 800; }
+    header.top h1 span {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .sub { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+    .actions { display: flex; gap: 10px; }
+
+    /* --- Счётчики --- */
+    .stats { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+
     .stat {
-      background: var(--panel);
+      background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 16px;
-      min-width: 120px;
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      min-width: 132px;
+      position: relative;
+      overflow: hidden;
     }
-    .stat b { display: block; font-size: 20px; }
-    .stat span { color: var(--muted); font-size: 13px; }
+
+    .stat::before {
+      content: ""; position: absolute; inset: 0 auto 0 0; width: 3px;
+      background: var(--accent-gradient);
+    }
+
+    .stat b { display: block; font-size: 24px; font-weight: 800; }
+    .stat span { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 
     /* --- Таблица --- */
+    .table-card { padding: 0; overflow: hidden; }
     .table-wrap { overflow-x: auto; }
-
-    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
     th, td {
       text-align: left;
-      padding: 12px 10px;
-      border-bottom: 1px solid var(--border);
+      padding: 14px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       vertical-align: top;
     }
 
-    th { color: var(--muted); font-weight: 500; font-size: 13px; white-space: nowrap; }
+    thead th {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      padding: 12px;
+    }
+
+    tbody tr { transition: background var(--transition); }
+    tbody tr:hover { background: var(--bg-card-hover); }
+    tbody tr:last-child td { border-bottom: none; }
 
     td.nowrap { white-space: nowrap; }
 
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      white-space: nowrap;
-      border: 1px solid transparent;
-    }
-
-    .badge.new { background: rgba(59,130,246,.16); color: #93c5fd; border-color: rgba(59,130,246,.4); }
-    .badge.in_progress { background: rgba(245,158,11,.16); color: #fcd34d; border-color: rgba(245,158,11,.4); }
-    .badge.ready { background: rgba(6,182,212,.16); color: #67e8f9; border-color: rgba(6,182,212,.4); }
-    .badge.completed { background: rgba(100,116,139,.2); color: #cbd5e1; border-color: rgba(100,116,139,.5); }
-
-    .source { color: var(--muted); font-size: 13px; }
-
-    select {
-      font: inherit;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
-    }
-
-    .msg { color: var(--muted); font-size: 13px; max-width: 320px; }
-
-    /* Кликабельные заголовки: сортировка по столбцу */
+    /* Заголовок-кнопка сортировки */
     button.sort {
       all: unset;
       cursor: pointer;
-      color: var(--muted);
-      font-size: 13px;
-      white-space: nowrap;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      display: inline-flex; align-items: center; gap: 6px;
       padding: 2px 0;
+      transition: color var(--transition);
     }
 
-    button.sort:hover { color: var(--text); }
-    button.sort[data-active="true"] { color: var(--text); font-weight: 600; }
-
-    button.sort .arrow { font-size: 11px; opacity: .7; }
+    button.sort:hover { color: var(--accent); }
+    button.sort[data-active="true"] { color: var(--accent); }
+    button.sort .arrow { font-size: 11px; opacity: .6; }
     button.sort[data-active="true"] .arrow { opacity: 1; }
 
-    /* Панель фильтров */
-    .filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: flex-end;
-      margin-bottom: 16px;
-      padding: 16px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
+    /* Фильтры прямо в шапке таблицы */
+    .filter-cell { margin-top: 8px; }
+    .filter-cell input, .filter-cell select { font-size: 13px; padding: 7px 9px; }
+    .date-range { display: flex; gap: 6px; }
+    .date-range input { min-width: 0; }
+
+    /* Выпадающий список с галочками */
+    .multi { position: relative; }
+
+    .multi > button {
+      width: 100%;
+      text-align: left;
+      font-size: 13px;
+      padding: 7px 9px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    .field label { margin: 0; }
-    .field select, .field input[type="date"], .field input[type="search"] {
-      font: inherit;
-      padding: 9px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
-      min-width: 150px;
+    .multi > button[data-filled="true"] { color: var(--accent); border-color: var(--border-strong); }
+
+    .multi-panel {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 230px;
+      max-height: 280px;
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      padding: 8px;
     }
 
-    .field input[type="date"] { min-width: 150px; }
-    .field input[type="search"] { min-width: 190px; }
-    .filters .spacer { flex: 1; }
-    .filters .count { color: var(--muted); font-size: 13px; }
+    .multi-panel[hidden] { display: none; }
 
-    .muted { color: var(--muted); }
-    .empty { padding: 32px; text-align: center; color: var(--muted); }
-    .saved { color: var(--ok); font-size: 13px; margin-left: 8px; }
+    .multi-panel label {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-transform: none;
+      letter-spacing: 0;
+      margin: 0;
+      transition: background var(--transition);
+    }
+
+    .multi-panel label:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .multi-panel input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+    .multi-panel .panel-actions { display: flex; gap: 8px; padding: 6px 4px 2px; }
+    .multi-panel .panel-actions button { flex: 1; font-size: 12px; padding: 7px; }
+
+    /* --- Бейджи --- */
+    .badge {
+      display: inline-block;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge.new { background: rgba(0, 212, 255, .14); color: var(--accent); }
+    .badge.in_progress { background: rgba(255, 176, 32, .16); color: #FFB020; }
+    .badge.completed { background: rgba(34, 197, 94, .16); color: #34D399; }
+
+    .source { color: var(--text-muted); font-size: 12px; }
+    .msg { color: var(--text-secondary); font-size: 13px; max-width: 300px; }
+
+    select.status-select { width: auto; font-size: 13px; padding: 7px 10px; }
+
+    .muted { color: var(--text-muted); }
+    .empty { padding: 44px; text-align: center; color: var(--text-muted); }
+    .saved { color: #34D399; font-size: 12px; margin-left: 8px; }
+
+    @media (max-width: 760px) {
+      body { padding: 20px 12px 56px; }
+      header.top h1 { font-size: 20px; }
+      .stat { min-width: 104px; padding: 11px 14px; }
+      .stat b { font-size: 20px; }
+    }
   </style>
 </head>
 <body>
 
 <!-- Вход -->
 <section class="card" id="login">
+  <div class="brand">IT</div>
   <h1>Заявки IT Doctor</h1>
-  <p>Введите пароль владельца, чтобы открыть список заявок.</p>
+  <p>Панель владельца сервиса</p>
   <label for="key">Пароль</label>
-  <input type="password" id="key" autocomplete="current-password" placeholder="пароль" />
+  <input type="password" id="key" autocomplete="current-password" placeholder="введите пароль" />
   <button class="primary" id="loginBtn" style="width:100%">Войти</button>
   <div class="error" id="loginError"></div>
 </section>
@@ -210,10 +308,10 @@
 <section id="panel" hidden>
   <header class="top">
     <div>
-      <h1>Заявки</h1>
+      <h1>Заявки <span>IT Doctor</span></h1>
       <div class="sub" id="updated">—</div>
     </div>
-    <div>
+    <div class="actions">
       <button id="refreshBtn">Обновить</button>
       <button id="logoutBtn">Выйти</button>
     </div>
@@ -221,77 +319,69 @@
 
   <div class="stats" id="stats"></div>
 
-  <!-- Фильтры -->
-  <div class="filters">
-    <div class="field">
-      <label for="fStatus">Статус</label>
-      <select id="fStatus"><option value="">Все</option></select>
-    </div>
-
-    <div class="field">
-      <label for="fSource">Источник</label>
-      <select id="fSource">
-        <option value="">Все</option>
-        <option value="website">Сайт</option>
-        <option value="mini_app">Mini App</option>
-        <option value="telegram_bot">Telegram-бот</option>
-      </select>
-    </div>
-
-    <div class="field">
-      <label for="fService">Услуга</label>
-      <select id="fService"><option value="">Все</option></select>
-    </div>
-
-    <div class="field">
-      <label for="fPeriod">Период</label>
-      <select id="fPeriod">
-        <option value="">За всё время</option>
-        <option value="today">Сегодня</option>
-        <option value="7">7 дней</option>
-        <option value="30">30 дней</option>
-        <option value="custom">Свой промежуток</option>
-      </select>
-    </div>
-
-    <div class="field" id="fFromWrap" hidden>
-      <label for="fFrom">С даты</label>
-      <input type="date" id="fFrom" />
-    </div>
-
-    <div class="field" id="fToWrap" hidden>
-      <label for="fTo">По дату</label>
-      <input type="date" id="fTo" />
-    </div>
-
-    <div class="field">
-      <label for="fSearch">Поиск по имени или телефону</label>
-      <input type="search" id="fSearch" placeholder="Иван или 999" />
-    </div>
-
-    <div class="spacer"></div>
-
-    <button id="resetFilters">Сбросить фильтры</button>
-  </div>
-
-  <div class="card">
+  <div class="card table-card">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th><button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button></th>
-            <th><button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button></th>
-            <th><button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button></th>
-            <th><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button></th>
+            <th>
+              <button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button>
+              <div class="filter-cell">
+                <div class="date-range">
+                  <input type="date" id="fFrom" title="С даты" />
+                  <input type="date" id="fTo" title="По дату" />
+                </div>
+              </div>
+            </th>
+
+            <th>
+              <button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button>
+              <div class="filter-cell">
+                <input type="text" id="fSearch" placeholder="поиск по всем полям" />
+              </div>
+            </th>
+
+            <th>
+              <button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button>
+            </th>
+
+            <th>
+              <button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button>
+              <div class="filter-cell">
+                <div class="multi" data-multi="service">
+                  <button type="button" data-multi-toggle>Все услуги</button>
+                  <div class="multi-panel" data-multi-panel hidden></div>
+                </div>
+              </div>
+            </th>
+
             <th>Сообщение</th>
-            <th><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button></th>
-            <th><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button></th>
+
+            <th>
+              <button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button>
+              <div class="filter-cell">
+                <div class="multi" data-multi="source">
+                  <button type="button" data-multi-toggle>Все источники</button>
+                  <div class="multi-panel" data-multi-panel hidden></div>
+                </div>
+              </div>
+            </th>
+
+            <th>
+              <button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button>
+              <div class="filter-cell">
+                <div class="multi" data-multi="status">
+                  <button type="button" data-multi-toggle>Все статусы</button>
+                  <div class="multi-panel" data-multi-panel hidden></div>
+                </div>
+              </div>
+            </th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
-    <div class="empty" id="empty" hidden>Заявок пока нет.</div>
+    <div class="empty" id="empty" hidden>По выбранным фильтрам заявок нет.</div>
   </div>
 </section>
 
@@ -305,11 +395,8 @@
   const STATUS_LABELS = {
     new: "Новая",
     in_progress: "В работе",
-    ready: "Готова",
     completed: "Завершена"
   };
-
-  const STATUS_ORDER = ["new", "in_progress", "ready", "completed"];
 
   const loginCard = document.getElementById("login");
   const panel = document.getElementById("panel");
@@ -320,100 +407,61 @@
   const statsBox = document.getElementById("stats");
   const updatedBox = document.getElementById("updated");
 
-  let statuses = STATUS_ORDER.map((value) => ({ value, label: STATUS_LABELS[value] }));
+  const fSearch = document.getElementById("fSearch");
+  const fFrom = document.getElementById("fFrom");
+  const fTo = document.getElementById("fTo");
 
-  // Текущая сортировка. По умолчанию — новые заявки сверху.
-  // Выбор запоминается в sessionStorage, чтобы пережить обновление страницы.
+  let statuses = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }));
+  let services = [];
+  let hasEmptyService = false;
+
+  // --- Сортировка ---------------------------------------------------------
+
   const DEFAULT_SORT = { key: "date", dir: "desc" };
+  const SORT_KEYS = ["date", "name", "phone", "service", "source", "status"];
 
   function readSort() {
     try {
       const saved = JSON.parse(sessionStorage.getItem("itd_admin_sort") || "null");
-      if (saved && ["date", "name", "phone", "service", "source", "status"].includes(saved.key)) {
+      if (saved && SORT_KEYS.includes(saved.key)) {
         return { key: saved.key, dir: saved.dir === "asc" ? "asc" : "desc" };
       }
-    } catch {
-      // ignore
-    }
+    } catch { /* пусто */ }
     return { ...DEFAULT_SORT };
   }
 
   let sort = readSort();
 
-  // Фильтры. Пустое значение означает «показывать всё».
-  const EMPTY_FILTERS = {
-    status: "",
-    source: "",
-    service: "",
-    period: "",
-    from: "",
-    to: "",
-    q: ""
-  };
+  // --- Фильтры ------------------------------------------------------------
+
+  // Множественный выбор: можно отметить сразу несколько статусов или источников.
+  const EMPTY_FILTERS = { status: [], source: [], service: [], q: "", from: "", to: "" };
 
   function readFilters() {
     try {
       const saved = JSON.parse(sessionStorage.getItem("itd_admin_filters") || "null");
       if (saved && typeof saved === "object") {
-        return { ...EMPTY_FILTERS, ...saved };
+        return {
+          status: Array.isArray(saved.status) ? saved.status : [],
+          source: Array.isArray(saved.source) ? saved.source : [],
+          service: Array.isArray(saved.service) ? saved.service : [],
+          q: typeof saved.q === "string" ? saved.q : "",
+          from: typeof saved.from === "string" ? saved.from : "",
+          to: typeof saved.to === "string" ? saved.to : ""
+        };
       }
-    } catch {
-      // ignore
-    }
-    return { ...EMPTY_FILTERS };
+    } catch { /* пусто */ }
+    return { ...EMPTY_FILTERS, status: [], source: [], service: [] };
   }
 
   let filters = readFilters();
 
-  // Элементы фильтров.
-  const fStatus = document.getElementById("fStatus");
-  const fSource = document.getElementById("fSource");
-  const fService = document.getElementById("fService");
-  const fPeriod = document.getElementById("fPeriod");
-  const fFrom = document.getElementById("fFrom");
-  const fTo = document.getElementById("fTo");
-  const fSearch = document.getElementById("fSearch");
-  const fFromWrap = document.getElementById("fFromWrap");
-  const fToWrap = document.getElementById("fToWrap");
-
-  /** Дата в формате 2026-10-07 по местному времени. */
-  function isoDay(date) {
-    const d = new Date(date);
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${d.getFullYear()}-${month}-${day}`;
-  }
-
-  /** Превращает выбранный период в пару дат «с» и «по». */
-  function periodRange() {
-    if (filters.period === "today") {
-      const today = isoDay(new Date());
-      return { from: today, to: today };
-    }
-
-    if (filters.period === "7" || filters.period === "30") {
-      const days = Number(filters.period);
-      const to = new Date();
-      const from = new Date();
-      from.setDate(from.getDate() - (days - 1));
-      return { from: isoDay(from), to: isoDay(to) };
-    }
-
-    if (filters.period === "custom") {
-      return { from: filters.from, to: filters.to };
-    }
-
-    return { from: "", to: "" };
-  }
-
-  // --- Помощники ---------------------------------------------------------
+  // --- Помощники ----------------------------------------------------------
 
   function formatDate(iso) {
     try {
       return new Intl.DateTimeFormat("ru-RU", {
-        dateStyle: "short",
-        timeStyle: "short",
-        timeZone: "Europe/Moscow"
+        dateStyle: "short", timeStyle: "short", timeZone: "Europe/Moscow"
       }).format(new Date(iso));
     } catch {
       return iso;
@@ -422,10 +470,13 @@
 
   function escapeHtml(value) {
     return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;");
+      .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
+
+  function isoDay(date) {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
   async function api(method, body, query) {
@@ -438,14 +489,12 @@
 
     const response = await fetch(`/api/leads${query || ""}`, options);
     let payload = {};
-
-    try {
-      payload = await response.json();
-    } catch {
-      payload = {};
-    }
-
+    try { payload = await response.json(); } catch { payload = {}; }
     return { status: response.status, payload };
+  }
+
+  function saveFilters() {
+    sessionStorage.setItem("itd_admin_filters", JSON.stringify(filters));
   }
 
   function currentQuery() {
@@ -453,105 +502,90 @@
     parts.set("sort", sort.key);
     parts.set("dir", sort.dir);
 
-    if (filters.status) parts.set("status", filters.status);
-    if (filters.source) parts.set("source", filters.source);
-    if (filters.service) parts.set("service", filters.service);
+    // Несколько значений уходят одной строкой через запятую.
+    if (filters.status.length) parts.set("status", filters.status.join(","));
+    if (filters.source.length) parts.set("source", filters.source.join(","));
+    if (filters.service.length) parts.set("service", filters.service.join(","));
     if (filters.q.trim()) parts.set("q", filters.q.trim());
-
-    const { from, to } = periodRange();
-    if (from) parts.set("from", from);
-    if (to) parts.set("to", to);
+    if (filters.from) parts.set("from", filters.from);
+    if (filters.to) parts.set("to", filters.to);
 
     return `?${parts.toString()}`;
   }
 
-  /** Показывает поля дат только для своего промежутка. */
-  function syncPeriodInputs() {
-    const custom = filters.period === "custom";
-    fFromWrap.hidden = !custom;
-    fToWrap.hidden = !custom;
-    fFrom.value = filters.from || "";
-    fTo.value = filters.to || "";
-  }
-
-  /** Заполняет выпадающие списки статусов и услуг. */
-  function fillFilterOptions(services, hasEmpty) {
-    // Статусы.
-    fStatus.innerHTML = '<option value="">Все</option>' + statuses
-      .map((s) => `<option value="${s.value}">${escapeHtml(s.label)}</option>`)
-      .join("");
-    fStatus.value = filters.status;
-
-    // Услуги: пересобираем список, сохраняя выбор.
-    const options = ['<option value="">Все</option>'];
-    if (hasEmpty) {
-      options.push('<option value="none">(не выбрана)</option>');
-    }
-    for (const service of services) {
-      options.push(`<option value="${escapeHtml(service)}">${escapeHtml(service)}</option>`);
-    }
-    fService.innerHTML = options.join("");
-
-    // Если выбранной услуги больше нет в списке — сбрасываем фильтр.
-    if (filters.service && !services.includes(filters.service) && filters.service !== "none") {
-      filters.service = "";
-      sessionStorage.setItem("itd_admin_filters", JSON.stringify(filters));
-    }
-    fService.value = filters.service;
-  }
-
-  /** Загружает список услуг для фильтра. */
-  async function loadServices() {
-    const { status, payload } = await api("GET", undefined, "?facets=1");
-    if (status === 200 && payload.ok) {
-      fillFilterOptions(payload.services || [], Boolean(payload.hasEmpty));
-    } else {
-      fillFilterOptions([], false);
-    }
-  }
-
-  /** Обновляет стрелки у заголовков таблицы. */
   function renderSortIndicators() {
     document.querySelectorAll("button.sort").forEach((button) => {
       const active = button.dataset.sort === sort.key;
       button.dataset.active = active ? "true" : "false";
       const arrow = button.querySelector(".arrow");
-      if (arrow) {
-        arrow.textContent = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
-      }
+      if (arrow) arrow.textContent = active ? (sort.dir === "asc" ? "↑" : "↓") : "↕";
     });
   }
 
+  // --- Выпадающие списки с галочками --------------------------------------
 
-  // --- Вход --------------------------------------------------------------
-
-  async function login(key) {
-    const { status, payload } = await api("POST", { key });
-
-    if (status === 200 && payload.ok) {
-      sessionStorage.setItem("itd_admin_key", key);
-      showPanel();
-      await load();
-      return;
+  const MULTI_OPTIONS = {
+    status: () => statuses.map((s) => ({ value: s.value, label: s.label })),
+    source: () => Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
+    service: () => {
+      const options = services.map((value) => ({ value, label: value }));
+      if (hasEmptyService) options.unshift({ value: "none", label: "(не выбрана)" });
+      return options;
     }
+  };
 
-    loginError.textContent = payload.error || "Не удалось войти";
-    sessionStorage.removeItem("itd_admin_key");
+  const MULTI_PLACEHOLDERS = {
+    status: "Все статусы",
+    source: "Все источники",
+    service: "Все услуги"
+  };
+
+  function renderMulti(name) {
+    const box = document.querySelector(`[data-multi="${name}"]`);
+    if (!box) return;
+
+    const options = MULTI_OPTIONS[name]();
+    const selected = filters[name];
+    const panel = box.querySelector("[data-multi-panel]");
+    const toggle = box.querySelector("[data-multi-toggle]");
+
+    // Снятые с учёта значения убираем из фильтра.
+    const allowed = options.map((o) => o.value);
+    const before = selected.length;
+    filters[name] = selected.filter((value) => allowed.includes(value));
+    if (filters[name].length !== before) saveFilters();
+
+    panel.innerHTML =
+      options.map((o) => `
+        <label>
+          <input type="checkbox" value="${escapeHtml(o.value)}"${filters[name].includes(o.value) ? " checked" : ""} />
+          <span>${escapeHtml(o.label)}</span>
+        </label>`).join("") +
+      '<div class="panel-actions"><button type="button" data-multi-clear>Снять всё</button></div>';
+
+    // В свёрнутом виде показываем, сколько выбрано.
+    if (filters[name].length === 0) {
+      toggle.textContent = MULTI_PLACEHOLDERS[name];
+      toggle.dataset.filled = "false";
+    } else if (filters[name].length === 1) {
+      const only = options.find((o) => o.value === filters[name][0]);
+      toggle.textContent = only ? only.label : "1 выбрано";
+      toggle.dataset.filled = "true";
+    } else {
+      toggle.textContent = `Выбрано: ${filters[name].length}`;
+      toggle.dataset.filled = "true";
+    }
   }
 
-  function showPanel() {
-    loginCard.hidden = true;
-    panel.hidden = false;
+  function renderAllMulti() {
+    for (const name of Object.keys(MULTI_OPTIONS)) renderMulti(name);
   }
 
-  function showLogin() {
-    panel.hidden = true;
-    loginCard.hidden = false;
-    keyInput.value = "";
-    keyInput.focus();
+  function closeAllPanels() {
+    document.querySelectorAll("[data-multi-panel]").forEach((panel) => { panel.hidden = true; });
   }
 
-  // --- Загрузка списка ---------------------------------------------------
+  // --- Загрузка -----------------------------------------------------------
 
   async function load() {
     renderSortIndicators();
@@ -574,38 +608,40 @@
     }
 
     render(payload.leads || []);
-    // Список услуг для фильтра подтягиваем отдельно: он меняется редко.
     await loadServices();
   }
 
-  /** Перечитывает список после смены фильтра. */
-  function applyFilters() {
-    sessionStorage.setItem("itd_admin_filters", JSON.stringify(filters));
-    syncPeriodInputs();
-    load();
+  async function loadServices() {
+    const { status, payload } = await api("GET", undefined, "?facets=1");
+
+    if (status === 200 && payload.ok) {
+      services = payload.services || [];
+      hasEmptyService = Boolean(payload.hasEmpty);
+    } else {
+      services = [];
+      hasEmptyService = false;
+    }
+
+    renderAllMulti();
   }
 
   function render(leads) {
-    updatedBox.textContent = "Обновлено: " +
-      new Intl.DateTimeFormat("ru-RU", { timeStyle: "medium" }).format(new Date()) +
-      " · всего: " + leads.length;
+    updatedBox.textContent =
+      `Обновлено: ${new Intl.DateTimeFormat("ru-RU", { timeStyle: "medium" }).format(new Date())} · найдено: ${leads.length}`;
 
-    // Статистика по статусам.
     const counts = {};
-    for (const lead of leads) {
-      counts[lead.status] = (counts[lead.status] || 0) + 1;
-    }
+    for (const lead of leads) counts[lead.status] = (counts[lead.status] || 0) + 1;
 
-    statsBox.innerHTML = statuses
-      .map((s) => `<div class="stat"><b>${counts[s.value] || 0}</b><span>${escapeHtml(s.label)}</span></div>`)
-      .join("");
+    statsBox.innerHTML = statuses.map((s) => `
+      <div class="stat"><b>${counts[s.value] || 0}</b><span>${escapeHtml(s.label)}</span></div>
+    `).join("");
 
     emptyBox.hidden = leads.length > 0;
 
     rowsBody.innerHTML = leads.map((lead) => {
-      const options = statuses
-        .map((s) => `<option value="${s.value}"${s.value === lead.status ? " selected" : ""}>${escapeHtml(s.label)}</option>`)
-        .join("");
+      const options = statuses.map((s) =>
+        `<option value="${s.value}"${s.value === lead.status ? " selected" : ""}>${escapeHtml(s.label)}</option>`
+      ).join("");
 
       return `
         <tr data-id="${escapeHtml(lead.id)}">
@@ -616,14 +652,39 @@
           <td class="msg">${escapeHtml(lead.message || "—")}</td>
           <td class="source">${escapeHtml(SOURCE_LABELS[lead.source] || lead.source)}</td>
           <td class="nowrap">
-            <select data-role="status">${options}</select>
-            <span class="saved" data-role="saved" hidden>сохранено</span>
+            <select class="status-select" data-role="status">${options}</select>
+            <span class="saved" data-role="saved" hidden>✓</span>
           </td>
         </tr>`;
     }).join("");
   }
 
-  // --- Смена статуса -----------------------------------------------------
+  // --- Вход и выход -------------------------------------------------------
+
+  async function login(key) {
+    const { status, payload } = await api("POST", { key });
+
+    if (status === 200 && payload.ok) {
+      sessionStorage.setItem("itd_admin_key", key);
+      showPanel();
+      await load();
+      return;
+    }
+
+    loginError.textContent = payload.error || "Не удалось войти";
+    sessionStorage.removeItem("itd_admin_key");
+  }
+
+  function showPanel() { loginCard.hidden = true; panel.hidden = false; }
+
+  function showLogin() {
+    panel.hidden = true;
+    loginCard.hidden = false;
+    keyInput.value = "";
+    keyInput.focus();
+  }
+
+  // --- Смена статуса ------------------------------------------------------
 
   async function changeStatus(row, select) {
     const id = row.getAttribute("data-id");
@@ -658,101 +719,25 @@
     }
   }
 
-  // --- События -----------------------------------------------------------
+  // --- События ------------------------------------------------------------
 
   document.getElementById("loginBtn").addEventListener("click", () => login(keyInput.value));
-
-  keyInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") login(keyInput.value);
-  });
+  keyInput.addEventListener("keydown", (e) => { if (e.key === "Enter") login(keyInput.value); });
 
   document.getElementById("refreshBtn").addEventListener("click", () => load());
 
   document.getElementById("logoutBtn").addEventListener("click", async () => {
     sessionStorage.removeItem("itd_admin_key");
-    // Пустой ключ на сервере означает выход: cookie стирается, доступ закрыт.
     await api("POST", { key: "" });
     showLogin();
   });
 
   rowsBody.addEventListener("change", (event) => {
     const select = event.target.closest('[data-role="status"]');
-    if (!select) return;
-    changeStatus(select.closest("tr"), select);
+    if (select) changeStatus(select.closest("tr"), select);
   });
 
-  // --- Фильтры -----------------------------------------------------------
-
-  fStatus.addEventListener("change", () => {
-    filters.status = fStatus.value;
-    applyFilters();
-  });
-
-  fSource.addEventListener("change", () => {
-    filters.source = fSource.value;
-    applyFilters();
-  });
-
-  fService.addEventListener("change", () => {
-    filters.service = fService.value;
-    applyFilters();
-  });
-
-  fPeriod.addEventListener("change", () => {
-    filters.period = fPeriod.value;
-
-    // Для «своего промежутка» подставляем последние 30 дней как заготовку.
-    if (filters.period === "custom" && !filters.from && !filters.to) {
-      const today = isoDay(new Date());
-      const start = new Date();
-      start.setDate(start.getDate() - 29);
-      filters.from = isoDay(start);
-      filters.to = today;
-    }
-
-    applyFilters();
-  });
-
-  fFrom.addEventListener("change", () => {
-    filters.from = fFrom.value;
-    // Если «с» позже «по» — подтягиваем «по» до той же даты.
-    if (filters.from && filters.to && filters.from > filters.to) {
-      filters.to = filters.from;
-    }
-    applyFilters();
-  });
-
-  fTo.addEventListener("change", () => {
-    filters.to = fTo.value;
-    if (filters.from && filters.to && filters.to < filters.from) {
-      filters.from = filters.to;
-    }
-    applyFilters();
-  });
-
-  // Поиск: ждём паузу в наборе, чтобы не дёргать базу на каждую букву.
-  let searchTimer = null;
-  fSearch.addEventListener("input", () => {
-    filters.q = fSearch.value;
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      sessionStorage.setItem("itd_admin_filters", JSON.stringify(filters));
-      load();
-    }, 350);
-  });
-
-  document.getElementById("resetFilters").addEventListener("click", () => {
-    filters = { ...EMPTY_FILTERS };
-    fStatus.value = "";
-    fSource.value = "";
-    fService.value = "";
-    fPeriod.value = "";
-    fSearch.value = "";
-    applyFilters();
-  });
-
-  // Клик по заголовку: первый раз сортирует по возрастанию, повторный — по убыванию.
-  // Клик по другому столбцу начинает с убывания для даты и с возрастания для остальных.
+  // Сортировка по клику на заголовок.
   document.querySelector("thead").addEventListener("click", (event) => {
     const button = event.target.closest("button.sort");
     if (!button) return;
@@ -768,22 +753,83 @@
     load();
   });
 
-  // --- Старт -------------------------------------------------------------
+  // Открытие и закрытие списков с галочками.
+  document.addEventListener("click", (event) => {
+    const toggle = event.target.closest("[data-multi-toggle]");
+    const clear = event.target.closest("[data-multi-clear]");
+    const checkbox = event.target.closest(".multi-panel input[type=checkbox]");
 
-  // Восстанавливаем выбранные фильтры в полях панели.
-  fStatus.value = filters.status;
-  fSource.value = filters.source;
-  fSearch.value = filters.q;
-  fPeriod.value = filters.period;
-  syncPeriodInputs();
+    if (toggle) {
+      const panel = toggle.parentElement.querySelector("[data-multi-panel]");
+      const wasHidden = panel.hidden;
+      closeAllPanels();
+      panel.hidden = !wasHidden;
+      return;
+    }
 
-  // Если пароль уже вводили в этой вкладке — сразу открываем список.
-  const savedKey = sessionStorage.getItem("itd_admin_key");
-  if (savedKey) {
-    login(savedKey);
-  } else {
-    showLogin();
+    if (clear) {
+      const name = clear.closest("[data-multi]").dataset.multi;
+      filters[name] = [];
+      saveFilters();
+      renderMulti(name);
+      load();
+      return;
+    }
+
+    if (checkbox) {
+      const name = checkbox.closest("[data-multi]").dataset.multi;
+      const value = checkbox.value;
+      const set = new Set(filters[name]);
+      checkbox.checked ? set.add(value) : set.delete(value);
+      filters[name] = [...set];
+      saveFilters();
+      renderMulti(name);
+      load();
+      return;
+    }
+
+    if (!event.target.closest(".multi")) closeAllPanels();
+  });
+
+  // Даты: применяем сразу после выбора.
+  let dateTimer = null;
+  function applyDates() {
+    clearTimeout(dateTimer);
+    dateTimer = setTimeout(() => {
+      filters.from = fFrom.value;
+      filters.to = fTo.value;
+      if (filters.from && filters.to && filters.from > filters.to) {
+        filters.to = filters.from;
+        fTo.value = filters.to;
+      }
+      saveFilters();
+      load();
+    }, 300);
   }
+
+  fFrom.addEventListener("change", applyDates);
+  fTo.addEventListener("change", applyDates);
+
+  // Поиск: пауза в наборе, чтобы не дёргать базу на каждую букву.
+  let searchTimer = null;
+  fSearch.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      filters.q = fSearch.value;
+      saveFilters();
+      load();
+    }, 350);
+  });
+
+  // --- Старт --------------------------------------------------------------
+
+  fSearch.value = filters.q;
+  fFrom.value = filters.from;
+  fTo.value = filters.to;
+  renderAllMulti();
+
+  const savedKey = sessionStorage.getItem("itd_admin_key");
+  if (savedKey) login(savedKey); else showLogin();
 </script>
 </body>
 </html>

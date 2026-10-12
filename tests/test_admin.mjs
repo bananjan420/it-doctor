@@ -93,6 +93,24 @@ function request(method, { body, cookie, query } = {}) {
   });
 }
 
+/**
+ * Приводит URL к читаемому виду.
+ *
+ * URLSearchParams кодирует уже закодированные значения повторно, поэтому
+ * раскодируем несколько раз — до устойчивого результата.
+ */
+function readableUrl(url) {
+  let text = String(url);
+
+  for (let i = 0; i < 3; i += 1) {
+    const decoded = decodeURIComponent(text.replaceAll("+", "%20"));
+    if (decoded === text) break;
+    text = decoded;
+  }
+
+  return text;
+}
+
 function cookieFrom(response) {
   const raw = response.headers.get("Set-Cookie") || "";
   const value = raw.split(";")[0];
@@ -204,7 +222,7 @@ await test("статус меняется и сохраняется в базе"
   assert.equal(leads.find((lead) => lead.id === "1").status, "in_progress");
 });
 
-await test("все четыре статуса принимаются", async () => {
+await test("все статусы принимаются, «готова» убрана", async () => {
   seedLeads();
   const cookie = await login();
 
@@ -216,7 +234,14 @@ await test("все четыре статуса принимаются", async ()
     assert.equal(response.status, 200, `статус ${status} должен приниматься`);
   }
 
-  assert.deepEqual(STATUSES, ["new", "in_progress", "ready", "completed"]);
+  // «Готова» и «Завершена» означали одно и то же, лишний статус убран.
+  assert.deepEqual(STATUSES, ["new", "in_progress", "completed"]);
+
+  const removed = await onRequest({
+    request: request("PATCH", { cookie, body: { id: "2", status: "ready" } }),
+    env: ENV
+  });
+  assert.equal(removed.status, 400, "убранный статус не должен приниматься");
 });
 
 await test("недопустимый статус отклоняется без записи", async () => {
@@ -354,6 +379,67 @@ await test("без параметров сортировки порядок по
 
   const query = supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || "";
   assert.match(query, /order=created_at\.desc/);
+});
+
+await test("несколько статусов сразу: «новые и в работе»", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?status=new,in_progress" }),
+    env: ENV
+  });
+
+  const query = decodeURIComponent(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
+  );
+  assert.match(query, /status=in\.\(new,in_progress\)/, "должен быть список значений");
+});
+
+await test("несколько источников сразу", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?source=website,telegram_bot" }),
+    env: ENV
+  });
+
+  const query = decodeURIComponent(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
+  );
+  assert.match(query, /source=in\.\(website,telegram_bot\)/);
+});
+
+await test("несколько услуг сразу: значения в кавычках", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?service=" + encodeURIComponent("Термопаста,Не выбрана") }),
+    env: ENV
+  });
+
+  const query = readableUrl(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
+  );
+  assert.match(query, /service=in\.\("Термопаста","Не выбрана"\)/);
+});
+
+await test("поиск смотрит и в текст заявки", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({ request: request("GET", { cookie, query: "?q=текст" }), env: ENV });
+
+  const query = decodeURIComponent(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
+  );
+  assert.match(query, /message\.ilike/, "текст заявки тоже должен искаться");
 });
 
 await test("фильтр по источнику уходит в запрос к базе", async () => {

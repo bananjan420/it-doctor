@@ -15,12 +15,12 @@ const COOKIE_NAME = "itd_admin";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 // Статусы заявки. Значения совпадают с типом lead_status в базе.
-export const STATUSES = ["new", "in_progress", "ready", "completed"];
+// «Готова» и «Завершена» означали одно и то же, поэтому оставлен один статус.
+export const STATUSES = ["new", "in_progress", "completed"];
 
 export const STATUS_LABELS = {
   new: "Новая",
   in_progress: "В работе",
-  ready: "Готова",
   completed: "Завершена"
 };
 
@@ -159,28 +159,48 @@ async function handleList(request, env, origin) {
     limit: "500"
   });
 
-  if (status && STATUSES.includes(status)) {
-    params.set("status", `eq.${status}`);
+  // Фильтры приходят списками через запятую: владелец может отметить сразу
+  // несколько значений, например «новые и в работе».
+  const statuses = pickList(status, STATUSES);
+  const sources = pickList(source, SOURCES);
+
+  if (statuses.length === 1) {
+    params.set("status", `eq.${statuses[0]}`);
+  } else if (statuses.length > 1) {
+    params.set("status", `in.(${statuses.join(",")})`);
   }
 
-  if (source && SOURCES.includes(source)) {
-    params.set("source", `eq.${source}`);
+  if (sources.length === 1) {
+    params.set("source", `eq.${sources[0]}`);
+  } else if (sources.length > 1) {
+    params.set("source", `in.(${sources.join(",")})`);
   }
 
-  // Услуга: отдельно обрабатываем «не выбрана» (в базе это пустое значение).
-  if (service === "none") {
+  // Услуга: список из справочника плюс отдельный пункт «не выбрана».
+  const serviceValues = splitList(service);
+  const onlyEmpty = serviceValues.includes("none") && serviceValues.length === 1;
+  const named = serviceValues.filter((value) => value && value !== "none");
+
+  if (onlyEmpty) {
     params.set("service", "is.null");
-  } else if (service) {
-    params.set("service", `eq.${service}`);
+  } else if (named.length === 1) {
+    params.set("service", `eq.${encodeFilterValue(named[0])}`);
+  } else if (named.length > 1) {
+    // Названия услуг содержат пробелы и тире: каждое значение кодируем,
+    // иначе пробел превратится в «+» и база поймёт фильтр неправильно.
+    params.set("service", `in.(${named.map((value) => `"${encodeFilterValue(value)}"`).join(",")})`);
   }
 
-  // Поиск по имени и телефону: клиент мог набрать часть имени или цифры.
+  // Поиск по имени, телефону и тексту заявки: владелец мог набрать часть слова.
   if (search) {
     // Оставляем только буквы, цифры и символы телефона. Так посторонние знаки
     // не смогут изменить синтаксис фильтра PostgREST.
     const safe = search.replace(/[^\p{L}\p{N}\s+()-]/gu, " ").replace(/\s+/g, " ").trim();
     if (safe) {
-      params.set("or", `(name.ilike.*${safe}*,phone.ilike.*${safe}*)`);
+      params.set(
+        "or",
+        `(name.ilike.*${safe}*,phone.ilike.*${safe}*,message.ilike.*${safe}*)`
+      );
     }
   }
 
@@ -327,7 +347,10 @@ async function handleServices(env, origin) {
 
 // --- Проверка параметров ------------------------------------------------
 
-/** Принимает только существующую дату вида 2026-10-07, иначе возвращает null. */
+/**
+ * Принимает только существующую дату вида 2026-10-07, иначе возвращает null.
+ * Нужен, чтобы мусор в параметрах не попадал в запрос к базе.
+ */
 function parseDate(value) {
   const text = String(value || "").trim();
 
@@ -343,6 +366,29 @@ function parseDate(value) {
   }
 
   return text;
+}
+
+/** Разбирает строку «new,in_progress» в массив значений. */
+function splitList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+/** Оставляет только значения из разрешённого списка. */
+function pickList(value, allowed) {
+  return splitList(value).filter((item) => allowed.includes(item));
+}
+
+/**
+ * Кодирует значение для фильтра PostgREST.
+ *
+ * Пробел должен стать %20, а не «+»: знак «+» в значении фильтра база
+ * воспринимает буквально, и поиск по названию услуги сломается.
+ */
+function encodeFilterValue(value) {
+  return encodeURIComponent(String(value).replaceAll('"', "")).replaceAll("+", "%20");
 }
 
 // --- Supabase -----------------------------------------------------------
