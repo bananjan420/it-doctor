@@ -160,9 +160,8 @@
     .stat span { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 
     /* --- Таблица --- */
-    .table-card { padding: 0; overflow: hidden; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table-card { padding: 0; }
+    .table-wrap { overflow-x: auto; }    table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
     th, td {
       text-align: left;
@@ -204,7 +203,7 @@
     button.sort[data-active="true"] .arrow { opacity: 1; }
 
     /* Фильтры прямо в шапке таблицы */
-    .filter-cell { margin-top: 8px; }
+    .filter-cell { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
     .filter-cell input, .filter-cell select { font-size: 13px; padding: 7px 9px; }
     .date-range { display: flex; gap: 6px; }
     .date-range input { min-width: 0; }
@@ -226,10 +225,9 @@
     .multi > button[data-filled="true"] { color: var(--accent); border-color: var(--border-strong); }
 
     .multi-panel {
-      position: absolute;
-      z-index: 20;
-      top: calc(100% + 6px);
-      left: 0;
+      /* Позиционируем окно вручную поверх страницы: иначе таблица его обрезает. */
+      position: fixed;
+      z-index: 60;
       min-width: 230px;
       max-height: 280px;
       overflow-y: auto;
@@ -327,7 +325,19 @@
             <th>
               <button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button>
               <div class="filter-cell">
-                <div class="date-range">
+                <select id="fPreset" title="Период">
+                  <option value="">За всё время</option>
+                  <option value="today">Сегодня</option>
+                  <option value="yesterday">Вчера</option>
+                  <option value="week">Эта неделя</option>
+                  <option value="lastWeek">Прошлая неделя</option>
+                  <option value="month">Этот месяц</option>
+                  <option value="lastMonth">Прошлый месяц</option>
+                  <option value="7">Последние 7 дней</option>
+                  <option value="30">Последние 30 дней</option>
+                  <option value="custom">Свой промежуток</option>
+                </select>
+                <div class="date-range" id="customRange" hidden>
                   <input type="date" id="fFrom" title="С даты" />
                   <input type="date" id="fTo" title="По дату" />
                 </div>
@@ -410,6 +420,8 @@
   const fSearch = document.getElementById("fSearch");
   const fFrom = document.getElementById("fFrom");
   const fTo = document.getElementById("fTo");
+  const fPreset = document.getElementById("fPreset");
+  const customRange = document.getElementById("customRange");
 
   let statuses = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }));
   let services = [];
@@ -435,7 +447,10 @@
   // --- Фильтры ------------------------------------------------------------
 
   // Множественный выбор: можно отметить сразу несколько статусов или источников.
-  const EMPTY_FILTERS = { status: [], source: [], service: [], q: "", from: "", to: "" };
+  const EMPTY_FILTERS = {
+    status: [], source: [], service: [],
+    q: "", preset: "", from: "", to: ""
+  };
 
   function readFilters() {
     try {
@@ -446,6 +461,7 @@
           source: Array.isArray(saved.source) ? saved.source : [],
           service: Array.isArray(saved.service) ? saved.service : [],
           q: typeof saved.q === "string" ? saved.q : "",
+          preset: typeof saved.preset === "string" ? saved.preset : "",
           from: typeof saved.from === "string" ? saved.from : "",
           to: typeof saved.to === "string" ? saved.to : ""
         };
@@ -477,6 +493,88 @@
   function isoDay(date) {
     const d = new Date(date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  /**
+   * Считает границы периода для выбранного варианта.
+   *
+   * Неделя считается с понедельника, месяц — с первого числа.
+   * Возвращает пустые строки, если период не выбран или задан вручную.
+   */
+  function presetRange(preset) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const shift = (days) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + days);
+      return d;
+    };
+
+    // Понедельник текущей недели.
+    const monday = (date) => {
+      const d = new Date(date);
+      const weekday = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - weekday);
+      return d;
+    };
+
+    switch (preset) {
+      case "today":
+        return { from: isoDay(today), to: isoDay(today) };
+
+      case "yesterday":
+        return { from: isoDay(shift(-1)), to: isoDay(shift(-1)) };
+
+      case "week": {
+        return { from: isoDay(monday(today)), to: isoDay(today) };
+      }
+
+      case "lastWeek": {
+        const start = monday(today);
+        start.setDate(start.getDate() - 7);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        return { from: isoDay(start), to: isoDay(end) };
+      }
+
+      case "month": {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { from: isoDay(start), to: isoDay(today) };
+      }
+
+      case "lastMonth": {
+        const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const end = new Date(today.getFullYear(), today.getMonth(), 0);
+        return { from: isoDay(start), to: isoDay(end) };
+      }
+
+      case "7":
+        return { from: isoDay(shift(-6)), to: isoDay(today) };
+
+      case "30":
+        return { from: isoDay(shift(-29)), to: isoDay(today) };
+
+      default:
+        return { from: "", to: "" };
+    }
+  }
+
+  /** Пересчитывает даты фильтра по выбранному периоду. */
+  function applyPreset() {
+    if (filters.preset === "custom") {
+      customRange.hidden = false;
+      fFrom.value = filters.from;
+      fTo.value = filters.to;
+      return;
+    }
+
+    customRange.hidden = true;
+    const range = presetRange(filters.preset);
+    filters.from = range.from;
+    filters.to = range.to;
+    fFrom.value = filters.from;
+    fTo.value = filters.to;
   }
 
   async function api(method, body, query) {
@@ -575,6 +673,28 @@
       toggle.textContent = `Выбрано: ${filters[name].length}`;
       toggle.dataset.filled = "true";
     }
+  }
+
+  /**
+   * Ставит окно фильтра точно под его кнопкой.
+   *
+   * Окно вынесено из таблицы (position: fixed), иначе оно обрезается
+   * границами карточки, когда в таблице мало строк.
+   */
+  function positionPanel(panel, toggle) {
+    const rect = toggle.getBoundingClientRect();
+    const width = Math.max(rect.width, 230);
+    const left = Math.min(rect.left, window.innerWidth - width - 12);
+    const below = rect.bottom + 6;
+    const panelHeight = panel.offsetHeight || 240;
+
+    // Если снизу не помещается — открываем вверх.
+    const openUp = below + panelHeight > window.innerHeight - 12;
+    const top = openUp ? Math.max(12, rect.top - panelHeight - 6) : below;
+
+    panel.style.left = `${Math.max(12, left)}px`;
+    panel.style.top = `${top}px`;
+    panel.style.width = `${width}px`;
   }
 
   function renderAllMulti() {
@@ -763,7 +883,11 @@
       const panel = toggle.parentElement.querySelector("[data-multi-panel]");
       const wasHidden = panel.hidden;
       closeAllPanels();
-      panel.hidden = !wasHidden;
+
+      if (!wasHidden) return;
+
+      panel.hidden = false;
+      positionPanel(panel, toggle);
       return;
     }
 
@@ -788,7 +912,30 @@
       return;
     }
 
-    if (!event.target.closest(".multi")) closeAllPanels();
+    if (!event.target.closest(".multi") && !event.target.closest(".multi-panel")) {
+      closeAllPanels();
+    }
+  });
+
+  // Открытое окно следует за своей кнопкой при прокрутке и изменении размера.
+  function repositionOpenPanels() {
+    document.querySelectorAll("[data-multi-panel]").forEach((panel) => {
+      if (panel.hidden) return;
+      const toggle = panel.parentElement.querySelector("[data-multi-toggle]");
+      if (toggle) positionPanel(panel, toggle);
+    });
+  }
+
+  window.addEventListener("resize", repositionOpenPanels);
+  document.addEventListener("scroll", repositionOpenPanels, true);
+
+  // --- Период -------------------------------------------------------------
+
+  fPreset.addEventListener("change", () => {
+    filters.preset = fPreset.value;
+    applyPreset();
+    saveFilters();
+    load();
   });
 
   // Даты: применяем сразу после выбора.
@@ -824,8 +971,8 @@
   // --- Старт --------------------------------------------------------------
 
   fSearch.value = filters.q;
-  fFrom.value = filters.from;
-  fTo.value = filters.to;
+  fPreset.value = filters.preset;
+  applyPreset();
   renderAllMulti();
 
   const savedKey = sessionStorage.getItem("itd_admin_key");
