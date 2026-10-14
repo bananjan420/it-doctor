@@ -153,6 +153,10 @@
     }
 
     .avatar-btn:hover { border-color: var(--accent); box-shadow: var(--shadow-accent); }
+
+    /* Пока данные не пришли, аватар не показываем: лучше пустое место,
+       чем вопросительный знак, мелькающий при открытии страницы. */
+    .avatar-btn[data-ready="false"] { visibility: hidden; }
     .avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .avatar-btn .initials {
       font-weight: 800; font-size: 20px;
@@ -337,8 +341,8 @@
     <div class="head">
       <div class="head-left">
         <div class="avatar-box">
-          <button class="avatar-btn" id="avatarBtn" title="Личные данные">
-            <span class="initials" id="avatarInitials">?</span>
+          <button class="avatar-btn" id="avatarBtn" title="Личные данные" data-ready="false">
+            <span class="initials" id="avatarInitials"></span>
           </button>
           <div class="avatar-menu" id="avatarMenu" hidden>
             <div class="who">
@@ -623,6 +627,22 @@
 
       setToken(payload.token);
       await openCabinet();
+
+      // Если владелец пришёл по ссылке «личные данные» без входа,
+      // нужное окно откроется сразу после авторизации.
+      const pendingWindow = sessionStorage.getItem("itd_open_after_login");
+
+      if (pendingWindow) {
+        sessionStorage.removeItem("itd_open_after_login");
+
+        if (pendingWindow === "profile") {
+          notify(profileNotice, "", "");
+          pendingAvatar = null;
+          openModal(profileModal);
+        } else {
+          startNewLead();
+        }
+      }
     } catch {
       notify(authNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
     } finally {
@@ -651,6 +671,17 @@
     avatarBtn.innerHTML = profile.avatar
       ? `<img src="${profile.avatar}" alt="Аватар" />`
       : `<span class="initials">${escapeHtml(label)}</span>`;
+
+    // Данные пришли — можно показывать аватар.
+    avatarBtn.dataset.ready = "true";
+
+    // Профиль запоминаем в памяти вкладки: при следующем открытии кабинета
+    // он покажется сразу, без пустой страницы и мелькания.
+    try {
+      sessionStorage.setItem("itd_client_profile", JSON.stringify(profile));
+    } catch {
+      // Если места нет, просто не кэшируем.
+    }
 
     avatarPreview.innerHTML = profile.avatar
       ? `<img src="${profile.avatar}" alt="Аватар" />`
@@ -989,15 +1020,58 @@
 
   // --- Старт --------------------------------------------------------------
 
-  // Если вход уже выполнялся в этой вкладке, показываем кабинет сразу,
-  // чтобы не мелькала форма входа. Данные всё равно проверит сервер.
-  const hadSession = Boolean(sessionStorage.getItem("itd_client_seen"));
+  // Ссылки с параметрами: с сайта можно прийти сразу к нужному окну.
+  const startParams = new URLSearchParams(window.location.search);
+  const openProfileAtStart = startParams.get("profile") === "1";
+  const openLeadAtStart = startParams.get("lead") === "1";
+
+  // Убираем параметры из адреса, чтобы при обновлении страницы окно не
+  // открывалось снова.
+  if (openProfileAtStart || openLeadAtStart) {
+    history.replaceState(null, "", window.location.pathname);
+  }
+
+  /** Открывает нужное окно после того, как кабинет загрузился. */
+  async function openRequestedWindow() {
+    if (openProfileAtStart) {
+      notify(profileNotice, "", "");
+      pendingAvatar = null;
+      openModal(profileModal);
+      return;
+    }
+
+    if (openLeadAtStart) {
+      startNewLead();
+    }
+  }
+
+  // Если профиль уже загружали в этой вкладке — показываем его сразу,
+  // без пустой страницы и вопросительного знака на месте аватара.
+  const cachedProfile = sessionStorage.getItem("itd_client_profile");
+
+  if (token() && cachedProfile) {
+    try {
+      applyProfile(JSON.parse(cachedProfile));
+    } catch {
+      // Испорченный кэш просто игнорируем.
+    }
+  }
 
   if (token()) {
-    if (hadSession) cabinet.classList.remove("hidden");
-    openCabinet({ silent: hadSession });
+    // Кабинет показываем сразу: и при кэше, и если вход уже был в этой вкладке.
+    if (cachedProfile || sessionStorage.getItem("itd_client_seen")) {
+      cabinet.classList.remove("hidden");
+    }
+
+    openCabinet({ silent: Boolean(cachedProfile) }).then(openRequestedWindow);
   } else {
     showAuth();
+
+    // Если пришли по ссылке на личные данные, но вход не выполнен —
+    // покажем форму входа, а после входа окно откроется само.
+    if (openProfileAtStart || openLeadAtStart) {
+      sessionStorage.setItem("itd_open_after_login", openProfileAtStart ? "profile" : "lead");
+    }
   }
 </script>
 </body>

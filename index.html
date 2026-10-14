@@ -1278,8 +1278,8 @@
             <span id="userMenuEmail"></span>
           </div>
           <a href="/account/" id="userMenuCabinet">📋 Мои заявки</a>
-          <a href="/account/" id="userMenuProfile">👤 Личные данные</a>
-          <a href="#lead" id="userMenuLead">📝 Оставить заявку</a>
+          <a href="/account/?profile=1" id="userMenuProfile">👤 Личные данные</a>
+          <a href="/account/?lead=1" id="userMenuLead">📝 Оставить заявку</a>
           <div class="user-menu__sep"></div>
           <button type="button" id="userLogout">🚪 Выйти из профиля</button>
         </div>
@@ -1832,9 +1832,6 @@
     }
 
     function renderClient(profile) {
-      // Профиль запоминаем: из него берём имя для формы заявки.
-      window.__clientProfile = profile;
-
       const label = clientInitials(profile.name, profile.email);
 
       userAvatar.innerHTML = profile.avatar
@@ -1884,19 +1881,6 @@
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") userMenu.hidden = true;
       });
-
-      // Заявка из шапки: подставляем данные профиля и ведём к форме.
-      const leadLink = document.getElementById("userMenuLead");
-      if (leadLink) {
-        leadLink.addEventListener("click", () => {
-          userMenu.hidden = true;
-
-          const nameInput = leadForm.name;
-          if (window.__clientProfile?.name && !nameInput.value.trim()) {
-            nameInput.value = window.__clientProfile.name;
-          }
-        });
-      }
 
       document.getElementById("userLogout").addEventListener("click", async () => {
         const token = clientToken();
