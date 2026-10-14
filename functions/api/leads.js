@@ -47,7 +47,13 @@ const LEAD_COLUMNS = [
   "service",
   "message",
   "source",
-  "status"
+  "status",
+  // Оплата: владелец видит статус и сумму, а также может проверить платёж.
+  "service_id",
+  "payment_id",
+  "payment_status",
+  "payment_amount",
+  "paid_at"
 ].join(",");
 
 // Столбцы, по которым разрешено сортировать: имя параметра -> колонка в базе.

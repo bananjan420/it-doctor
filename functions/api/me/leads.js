@@ -8,6 +8,8 @@
 //   POST /api/me/leads  -> новая заявка от имени клиента
 
 import { getAuthUser, json, profileFrom, supabaseAdmin } from "../_lib/auth.js";
+import { payableAmount, paymentStatusLabel } from "../_lib/payments.js";
+import { paymentsConfigured } from "../_lib/yookassa.js";
 import { notifyOwner } from "../_lib/telegram.js";
 
 const SOURCE_ACCOUNT = "account";
@@ -21,7 +23,12 @@ const LEAD_COLUMNS = [
   "service",
   "message",
   "source",
-  "status"
+  "status",
+  // Оплата: по этим полям кабинет решает, показывать ли кнопку «Оплатить».
+  "service_id",
+  "payment_status",
+  "payment_amount",
+  "paid_at"
 ].join(",");
 
 export async function onRequest({ request, env }) {
@@ -79,8 +86,51 @@ async function listLeads(user, env) {
 
   return json(200, {
     ok: true,
-    leads,
+    // Кабинету нужно знать, настроен ли приём оплаты: если ключей нет,
+    // кнопка «Оплатить» только запутает клиента.
+    paymentsEnabled: paymentsConfigured(env),
+    leads: await withPayableAmounts(env, leads),
     profile: profileFrom(user)
+  });
+}
+
+/**
+ * Добавляет к заявкам сумму к оплате и подпись статуса.
+ *
+ * Сумма считается по каталогу услуг на сервере: клиент её не передаёт и не
+ * может изменить. Если оплатить нельзя, payable_amount = 0.
+ */
+async function withPayableAmounts(env, leads) {
+  const ids = [...new Set(leads.map((lead) => lead.service_id).filter(Boolean))];
+  const catalog = new Map();
+
+  if (ids.length) {
+    const params = new URLSearchParams({
+      select: "id,price_value,price_is_from,is_active",
+      id: `in.(${ids.join(",")})`,
+      limit: "200"
+    });
+
+    const response = await supabaseAdmin(env, `/rest/v1/services?${params.toString()}`, { method: "GET" });
+
+    if (response.ok) {
+      const rows = await response.json();
+
+      for (const row of rows) {
+        catalog.set(row.id, row);
+      }
+    }
+  }
+
+  return leads.map((lead) => {
+    const { payable, amount } = payableAmount(catalog.get(lead.service_id));
+
+    return {
+      ...lead,
+      // Сколько нужно заплатить. 0 значит «оплата недоступна».
+      payable_amount: payable ? amount : 0,
+      payment_status_label: paymentStatusLabel(lead.payment_status)
+    };
   });
 }
 
@@ -98,6 +148,10 @@ async function createLead(request, user, env) {
   const service = String(payload.service || "").trim().slice(0, 500);
   const message = String(payload.message || "").trim().slice(0, 5000);
 
+  // Ссылку на услугу каталога определяет сервер: по ней потом считается
+  // сумма оплаты. Клиент её не передаёт.
+  const serviceId = await matchServiceId(env, service);
+
   // Имя и телефон в самой заявке не спрашиваем: они уже есть в профиле.
   // Если клиент их ещё не заполнил — просим сначала открыть личные данные.
   if (!profile.name || !profile.phone) {
@@ -112,6 +166,7 @@ async function createLead(request, user, env) {
     name: profile.name,
     phone: profile.phone,
     service: service || null,
+    service_id: serviceId,
     message: message || null,
     source: SOURCE_ACCOUNT,
     status: DEFAULT_STATUS,
@@ -149,6 +204,40 @@ async function createLead(request, user, env) {
   });
 
   return json(200, { ok: true, lead });
+}
+
+/**
+ * Находит услугу каталога по названию из заявки.
+ *
+ * В заявке название записано текстом вида «🧹 Чистка от пыли — 1500 руб»,
+ * поэтому ищем название каталога внутри строки. Совпадение должно быть
+ * однозначным: при неоднозначности возвращаем null, чтобы не посчитать
+ * оплату по чужой цене.
+ */
+async function matchServiceId(env, serviceLabel) {
+  const label = String(serviceLabel || "").trim();
+
+  if (!label || label === "Не выбрана") {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    select: "id,title",
+    order: "sort_order.asc",
+    limit: "200"
+  });
+
+  const response = await supabaseAdmin(env, `/rest/v1/services?${params.toString()}`, { method: "GET" });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const rows = await response.json();
+  const lowered = label.toLowerCase();
+  const matches = rows.filter((row) => lowered.includes(String(row.title || "").toLowerCase()));
+
+  return matches.length === 1 ? matches[0].id : null;
 }
 
 function cors() {

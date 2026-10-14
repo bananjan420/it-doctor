@@ -419,6 +419,33 @@
     .empty { padding: 44px; text-align: center; color: var(--text-muted); }
     .saved { color: #34D399; font-size: 12px; margin-left: 8px; }
 
+    /* --- Оплата в таблице --- */
+    .pay-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      background: rgba(255, 255, 255, .06);
+      color: var(--text-secondary);
+    }
+
+    .pay-badge.done { background: rgba(52, 211, 153, .16); color: var(--ok); }
+    .pay-badge.wait { background: rgba(255, 176, 32, .16); color: #FFB020; }
+    .pay-badge.canceled { background: rgba(255, 107, 107, .16); color: #FF6B6B; }
+
+    .pay-check {
+      margin-left: 6px;
+      padding: 3px 8px;
+      font-size: 13px;
+      line-height: 1;
+      border-radius: 8px;
+    }
+
+    .pay-check:hover { color: var(--accent); border-color: var(--accent); }
+    .pay-check[disabled] { opacity: .5; }
+
     /* На узких экранах возвращаем прокрутку таблицы: там окно фильтра
        открывается редко, а разъехавшаяся таблица мешает всегда. */
     /* --- Вкладки --- */
@@ -746,6 +773,7 @@
             <th>Сообщение</th>
             <th><div class="th-top"><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="source" aria-label="Фильтр: Источник" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="source" hidden><span class="pop-title">Источники</span><div class="multi" data-multi="source"><div class="multi-panel" data-multi-panel></div></div></div></th>
             <th><div class="th-top"><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="status" aria-label="Фильтр: Статус" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="status" hidden><span class="pop-title">Статусы</span><div class="multi" data-multi="status"><div class="multi-panel" data-multi-panel></div></div></div></th>
+            <th>Оплата</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -951,6 +979,11 @@
    * Отдельная обёртка, чтобы вызовы в разделе услуг читались понятно:
    * GET_SERVICES, POST_SERVICE, PATCH_SERVICE, DELETE_SERVICE.
    */
+  /** Проверка оплаты: её выполняет общий эндпоинт кабинета. */
+  async function checkPaymentApi(body) {
+    return request("/api/me/payments", "POST", body);
+  }
+
   async function servicesApi(action, body) {
     if (action === "GET_SERVICES") {
       return request("/api/services", "GET");
@@ -1139,6 +1172,73 @@
     for (const name of Object.keys(MULTI_OPTIONS)) renderMulti(name);
   }
 
+  // --- Оплата в таблице ---------------------------------------------------
+
+  // Названия статусов оплаты: значения приходят от ЮKassa.
+  const PAYMENT_LABELS = {
+    pending: "Ожидает оплаты",
+    waiting_for_capture: "Ожидает подтверждения",
+    succeeded: "Оплачено",
+    canceled: "Отменён"
+  };
+
+  const PAYMENT_CLASSES = {
+    pending: "wait",
+    waiting_for_capture: "wait",
+    succeeded: "done",
+    canceled: "canceled"
+  };
+
+  /** Ячейка «Оплата»: статус, сумма и кнопка проверки. */
+  function paymentCell(lead) {
+    const status = String(lead.payment_status || "");
+    const amount = Number(lead.payment_amount);
+    const hasAmount = Number.isFinite(amount) && amount > 0;
+
+    // Оплату ещё не начинали: показываем только возможную сумму.
+    if (!status) {
+      return lead.service_id
+        ? '<span class="muted">не начата</span>'
+        : '<span class="muted">—</span>';
+    }
+
+    const label = PAYMENT_LABELS[status] || status;
+    const kind = PAYMENT_CLASSES[status] || "";
+    const sum = hasAmount ? ` · ${new Intl.NumberFormat("ru-RU").format(amount)} ₽` : "";
+
+    // Успешную оплату перепроверять незачем.
+    const button = status === "succeeded"
+      ? ""
+      : ` <button type="button" class="pay-check" data-check-payment="${escapeHtml(lead.id)}" title="Спросить статус у ЮKassa">↻</button>`;
+
+    return `<span class="pay-badge ${kind}">${escapeHtml(label)}${sum}</span>${button}`;
+  }
+
+  // Кнопка проверки: спрашиваем статус у ЮKassa через сервер.
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-check-payment]");
+    if (!button) return;
+
+    const leadId = button.dataset.checkPayment;
+    button.disabled = true;
+
+    try {
+      const { status, payload } = await checkPaymentApi({ leadId });
+
+      if (status !== 200 || !payload.ok) {
+        alert(payload.error || "Не удалось проверить оплату");
+        return;
+      }
+
+      // Показываем свежие данные: перезагружаем список заявок.
+      await load();
+    } catch {
+      alert("Сеть недоступна, проверьте позже");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   // --- Загрузка -----------------------------------------------------------
 
   async function load() {
@@ -1256,6 +1356,7 @@
             <select class="status-select" data-role="status">${options}</select>
             <span class="saved" data-role="saved" hidden>✓</span>
           </td>
+          <td class="nowrap">${paymentCell(lead)}</td>
         </tr>`;
     }).join("");
   }

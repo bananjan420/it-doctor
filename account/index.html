@@ -258,6 +258,39 @@
     .lead-rows { display: grid; gap: 6px; font-size: 14px; color: var(--text-secondary); }
     .lead-rows b { color: var(--text-primary); font-weight: 600; }
 
+    /* --- Оплата в карточке заявки --- */
+    .pay {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, .07);
+    }
+
+    .pay-status { font-size: 14px; color: var(--text-secondary); }
+    .pay-status b { color: var(--text-primary); font-size: 15px; }
+    .pay--done .pay-status { color: var(--ok); }
+    .pay-note { font-size: 12px; color: var(--text-muted); }
+
+    .pay-btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--accent-gradient);
+      color: #04121A;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .pay-btn:hover { filter: brightness(1.08); }
+    .pay-btn[disabled] { opacity: .6; cursor: default; }
+
     .badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .badge.new { background: rgba(0,212,255,.14); color: var(--accent); }
     .badge.in_progress { background: rgba(255,176,32,.16); color: #FFB020; }
@@ -555,6 +588,9 @@
 
   const STATUS_LABELS = { new: "Новая", in_progress: "В работе", completed: "Завершена" };
 
+  // Настроен ли приём оплаты на сервере. Пока ключей нет, кнопку не показываем.
+  let paymentsEnabled = false;
+
   const $ = (id) => document.getElementById(id);
 
   const authView = $("authView");
@@ -798,6 +834,7 @@
       // форму входа ни на мгновение.
       sessionStorage.setItem("itd_client_seen", "1");
 
+      paymentsEnabled = Boolean(payload.paymentsEnabled);
       applyProfile(payload.profile || {});
       render(payload.leads || []);
     } catch {
@@ -823,7 +860,7 @@
 
     // В карточке нет имени и телефона: клиент знает, как его зовут.
     leadsBox.innerHTML = leads.map((lead) => `
-      <div class="lead">
+      <div class="lead" data-lead="${escapeHtml(lead.id)}">
         <div class="lead-top">
           <span class="lead-date">${escapeHtml(formatDate(lead.created_at))}</span>
           <span class="badge ${escapeHtml(lead.status)}">${escapeHtml(STATUS_LABELS[lead.status] || lead.status)}</span>
@@ -832,8 +869,69 @@
           <div><b>Услуга:</b> ${escapeHtml(lead.service || "не выбрана")}</div>
           ${lead.message ? `<div><b>Сообщение:</b> ${escapeHtml(lead.message)}</div>` : ""}
         </div>
+        ${paymentBlock(lead)}
       </div>
     `).join("");
+  }
+
+  /**
+   * Блок оплаты в карточке заявки.
+   *
+   * Кнопка показывается, только если оплата возможна: услуга есть в каталоге,
+   * цена у неё точная (не «от») и заявка ещё не оплачена. Возможность оплаты
+   * решает сервер — здесь мы лишь показываем то, что он сообщил.
+   */
+  function paymentBlock(lead) {
+    // Оплата ещё не настроена владельцем: не показываем ничего.
+    if (!paymentsEnabled) return "";
+
+    const status = String(lead.payment_status || "");
+    const amount = Number(lead.payment_amount);
+
+    // Оплачено: показываем отметку и дату.
+    if (status === "succeeded") {
+      return `
+        <div class="pay pay--done">
+          <span class="pay-status">✅ Оплачено${Number.isFinite(amount) ? `: ${formatAmount(amount)}` : ""}</span>
+          ${lead.paid_at ? `<span class="pay-note">${escapeHtml(formatDate(lead.paid_at))}</span>` : ""}
+        </div>`;
+    }
+
+    // Платёж создан, но не завершён: можно вернуться к оплате.
+    if (status === "pending" || status === "waiting_for_capture") {
+      return `
+        <div class="pay">
+          <span class="pay-status">⏳ Ожидает оплаты${Number.isFinite(amount) ? `: ${formatAmount(amount)}` : ""}</span>
+          <button type="button" class="pay-btn" data-pay="${escapeHtml(lead.id)}">Перейти к оплате</button>
+        </div>`;
+    }
+
+    // Оплата ещё не создавалась. Если у заявки нет услуги из каталога —
+    // кнопку не показываем: сумма неизвестна.
+    if (!lead.service_id) {
+      return "";
+    }
+
+    // Сумму показывает сервер: если он её не прислал, кнопку не рисуем.
+    const known = Number(lead.payable_amount);
+
+    if (!Number.isFinite(known) || known <= 0) {
+      return lead.payment_status === "canceled"
+        ? '<div class="pay"><span class="pay-status">Платёж отменён</span>'
+          + `<button type="button" class="pay-btn" data-pay="${escapeHtml(lead.id)}">Оплатить заново</button></div>`
+        : "";
+    }
+
+    return `
+      <div class="pay">
+        <span class="pay-status">К оплате: <b>${formatAmount(known)}</b></span>
+        <button type="button" class="pay-btn" data-pay="${escapeHtml(lead.id)}">Оплатить</button>
+      </div>`;
+  }
+
+  /** Сумма в рублях: 1000 -> «1 000 ₽». */
+  function formatAmount(value) {
+    return `${new Intl.NumberFormat("ru-RU").format(Math.round(value))} ₽`;
   }
 
   // --- Меню аватара -------------------------------------------------------
@@ -1140,6 +1238,89 @@
     ownerTapTimer = setTimeout(() => { ownerTaps = 0; }, OWNER_TAP_WINDOW_MS);
   });
 
+  // --- Оплата -------------------------------------------------------------
+
+  /**
+   * Отправляет клиента на страницу оплаты ЮKassa.
+   *
+   * Сумму клиент не передаёт: сервер считает её по каталогу услуг сам.
+   */
+  async function startPayment(leadId, button) {
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Готовим оплату…";
+
+    try {
+      const { status, payload } = await api("/api/me/pay", {
+        method: "POST",
+        body: { leadId }
+      });
+
+      if (status !== 200 || !payload.ok) {
+        notify(authNotice, payload.error || "Не удалось создать оплату.", "error");
+        button.disabled = false;
+        button.textContent = original;
+        return;
+      }
+
+      if (!payload.paymentUrl) {
+        notify(authNotice, "ЮKassa не выдала ссылку на оплату.", "error");
+        button.disabled = false;
+        button.textContent = original;
+        return;
+      }
+
+      // Уходим на оплату: после неё ЮKassa вернёт клиента в кабинет.
+      window.location.href = payload.paymentUrl;
+    } catch {
+      notify(authNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
+      button.disabled = false;
+      button.textContent = original;
+    }
+  }
+
+  leadsBox.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-pay]");
+    if (button) startPayment(button.dataset.pay, button);
+  });
+
+  /**
+   * Проверяет оплату после возврата из ЮKassa.
+   *
+   * Вебхук мог не дойти, поэтому при возврате клиента статус спрашиваем
+   * у сервера: он перепроверит платёж в ЮKassa.
+   */
+  async function checkPaymentAfterReturn() {
+    if (!token()) return;
+
+    try {
+      const { status, payload } = await api("/api/me/leads", { method: "GET" });
+      if (status !== 200 || !payload.ok) return;
+
+      // Ищем заявки, где платёж уже создан, но ещё не завершён.
+      const pending = (payload.leads || []).filter(
+        (lead) => lead.payment_id && lead.payment_status !== "succeeded"
+      );
+
+      let changed = false;
+
+      for (const lead of pending) {
+        const result = await api("/api/me/payments", { method: "POST", body: { leadId: lead.id } });
+
+        if (result.status === 200 && result.payload.changed) {
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        notify(authNotice, "Оплата подтверждена.", "ok");
+        await openCabinet({ silent: true });
+      }
+    } catch {
+      // Ничего страшного: статус обновится при следующем заходе или вебхуком.
+    }
+  }
+
   // --- Услуги из базы -----------------------------------------------------
   // Список услуг ведёт владелец в админке, поэтому в кабинете он тоже
   // подтягивается с сервера. Пока ответ не пришёл, работают варианты
@@ -1198,10 +1379,12 @@
   const startParams = new URLSearchParams(window.location.search);
   const openProfileAtStart = startParams.get("profile") === "1";
   const openLeadAtStart = startParams.get("lead") === "1";
+  // Возврат из ЮKassa: ?paid=1. Нужно перепроверить статус оплаты.
+  const paidReturn = startParams.get("paid") === "1";
 
   // Убираем параметры из адреса, чтобы при обновлении страницы окно не
   // открывалось снова.
-  if (openProfileAtStart || openLeadAtStart) {
+  if (openProfileAtStart || openLeadAtStart || paidReturn) {
     history.replaceState(null, "", window.location.pathname);
   }
 
@@ -1237,7 +1420,12 @@
       cabinet.classList.remove("hidden");
     }
 
-    openCabinet({ silent: Boolean(cachedProfile) }).then(openRequestedWindow);
+    openCabinet({ silent: Boolean(cachedProfile) }).then(async () => {
+      await openRequestedWindow();
+
+      // Вернулись с оплаты — уточняем статус у сервера.
+      if (paidReturn) checkPaymentAfterReturn();
+    });
   } else {
     showAuth();
 

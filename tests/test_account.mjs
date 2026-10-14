@@ -41,6 +41,39 @@ let leads = [];
 let leadQueries = [];
 let signupDisabled = false;
 
+// Каталог услуг: цены и признак «от».
+const services = [
+  { id: "svc-fixed", title: "Замена термопасты", price_value: 1000, price_is_from: false, is_active: true },
+  { id: "svc-from", title: "Замена аккумулятора", price_value: 5000, price_is_from: true, is_active: true }
+];
+
+// Что вернёт заглушка ЮKassa. Тесты меняют это значение.
+let yookassaStatus = "pending";
+let yookassaAmount = null;
+let yookassaCalls = [];
+
+/** Заглушка ЮKassa: создание платежа и чтение платежа. */
+function yookassaResponder(target, method, body) {
+  const isCreate = !/\/v3\/payments\/[^/?]+/.test(target);
+
+  yookassaCalls.push({ method, url: target, body: isCreate ? body : null });
+
+  // Сумма: при создании берём из запроса, при чтении — заданную тестом.
+  const amount = isCreate
+    ? String(body?.amount?.value || "0.00")
+    : String(yookassaAmount ?? "1000.00");
+
+  return new Response(JSON.stringify({
+    id: "pay-test-1",
+    status: isCreate ? "pending" : yookassaStatus,
+    paid: (isCreate ? "pending" : yookassaStatus) === "succeeded",
+    amount: { value: amount, currency: "RUB" },
+    confirmation: { type: "redirect", confirmation_url: "https://yookassa.test/pay/1" },
+    captured_at: "2026-10-14T12:00:00.000Z",
+    metadata: body?.metadata || {}
+  }), { status: 200 });
+}
+
 const TOKEN_PREFIX = "token-for-";
 
 globalThis.fetch = async (url, options = {}) => {
@@ -144,6 +177,18 @@ globalThis.fetch = async (url, options = {}) => {
       leads.push(row);
       return new Response(JSON.stringify([row]), { status: 201 });
     }
+  }
+
+  // --- Таблица services ---
+  // Каталог услуг: по нему сервер определяет услугу заявки.
+  if (target.includes("/rest/v1/services")) {
+    return new Response(JSON.stringify(services), { status: 200 });
+  }
+
+  // --- ЮKassa ---
+  // Заглушка внешнего сервиса: настоящие ключи в тестах не нужны.
+  if (target.includes("/v3/payments")) {
+    return yookassaResponder(target, method, body);
   }
 
   throw new Error(`неожиданный запрос: ${target}`);
