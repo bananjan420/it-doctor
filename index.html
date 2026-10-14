@@ -562,6 +562,27 @@
       visibility: visible;
     }
 
+    /* Кнопка входа в мобильном меню */
+    .mobile-menu__login {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 0;
+      border: none;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+      background: transparent;
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 17px;
+      text-align: left;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .mobile-menu__login:hover { color: var(--accent); }
+    .mobile-menu__login[hidden] { display: none; }
+
     .mobile-menu a {
       color: var(--text-secondary);
       font-weight: 600;
@@ -1517,6 +1538,10 @@
     <a href="#about">О мастере</a>
     <a href="#contacts">Контакты</a>
     <a href="/account/">Личный кабинет</a>
+    <button type="button" class="mobile-menu__login" id="mobileLoginBtn">
+      <i class="fas fa-right-to-bracket"></i>
+      <span>Войти</span>
+    </button>
     <a href="#lead" class="btn btn-primary">Заказать звонок</a>
   </div>
 
@@ -2127,11 +2152,13 @@
 
       userBox.hidden = false;
       if (siteLoginBtn) siteLoginBtn.hidden = true;
+      if (mobileLoginBtn) mobileLoginBtn.hidden = true;
     }
 
     // --- Окно входа -------------------------------------------------------
 
     const siteLoginBtn = document.getElementById("siteLoginBtn");
+    const mobileLoginBtn = document.getElementById("mobileLoginBtn");
     const loginModal = document.getElementById("loginModal");
     const siteAuthForm = document.getElementById("siteAuthForm");
     const siteAuthStatus = document.getElementById("siteAuthStatus");
@@ -2173,6 +2200,16 @@
 
     if (siteLoginBtn) {
       siteLoginBtn.addEventListener("click", openLoginModal);
+
+      // С телефона вход открывается из мобильного меню.
+      if (mobileLoginBtn) {
+        mobileLoginBtn.addEventListener("click", () => {
+          mobileMenu.classList.remove("open");
+          burger.classList.remove("active");
+          burger.setAttribute("aria-expanded", "false");
+          openLoginModal();
+        });
+      }
 
       loginTab.addEventListener("click", () => setAuthMode("login"));
       registerTab.addEventListener("click", () => setAuthMode("register"));
@@ -2241,6 +2278,7 @@
       // Пока не знаем, вошёл ли клиент, не показываем ни кнопку входа, ни профиль.
       if (!clientToken()) {
         if (siteLoginBtn) siteLoginBtn.hidden = false;
+        if (mobileLoginBtn) mobileLoginBtn.hidden = false;
         return;
       }
 
