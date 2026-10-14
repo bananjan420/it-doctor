@@ -861,8 +861,14 @@
   }
 
   function render(leads) {
+    // Время сборки страницы нужно, чтобы отличать свежую версию от старой
+    // из кэша браузера.
+    const built = new Date(document.lastModified);
+
     updatedBox.textContent =
-      `Обновлено: ${new Intl.DateTimeFormat("ru-RU", { timeStyle: "medium" }).format(new Date())} · найдено: ${leads.length}`;
+      `Обновлено: ${new Intl.DateTimeFormat("ru-RU", { timeStyle: "medium" }).format(new Date())}` +
+      ` · найдено: ${leads.length}` +
+      ` · сборка: ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(built)}`;
 
     const counts = {};
     for (const lead of leads) counts[lead.status] = (counts[lead.status] || 0) + 1;

@@ -10,12 +10,25 @@
   ! X-Frame-Options
   Content-Security-Policy: frame-ancestors https://web.telegram.org https://*.telegram.org
 
-# Админку не кэшируем и запрещаем поисковикам: страница только для владельца.
+# Админка: страница только для владельца. Запрещаем кэширование, чтобы
+# после обновления кода всегда открывалась свежая версия без очистки кэша.
 /admin*
-  Cache-Control: no-store
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
   X-Robots-Tag: noindex, nofollow
 
-# Личный кабинет: страница для клиентов, поисковикам не показываем.
-/account*
-  Cache-Control: no-store
+/admin/
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
   X-Robots-Tag: noindex, nofollow
+
+# Личный кабинет: страница для клиентов. Тоже без кэша.
+/account*
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+  Pragma: no-cache
+  Expires: 0
+  X-Robots-Tag: noindex, nofollow
+
+# Стили и скрипты: браузер обязан проверять свежесть при каждом заходе.
+/assets/*
+  Cache-Control: no-cache, must-revalidate, max-age=0
