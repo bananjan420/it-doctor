@@ -465,9 +465,9 @@
       top: 0;
       left: 0;
       z-index: 1002;
-      min-width: 220px;
-      max-width: calc(100vw - 24px);
+      min-width: 0;
       padding: 8px;
+      overflow-x: hidden;
       border-radius: 14px;
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -488,6 +488,8 @@
       display: block;
       width: 100%;
       text-align: left;
+      white-space: normal;
+      overflow-wrap: anywhere;
       padding: 11px 12px;
       border: none;
       border-radius: 9px;
@@ -517,6 +519,14 @@
       .user-name { display: none; }
       .user-btn { padding: 4px; }
       .header__inner { gap: 10px; }
+
+      /* Меню профиля компактнее: так оно помещается на узком экране */
+      .user-menu { padding: 6px; }
+      .user-menu a,
+      .user-menu button { padding: 10px; font-size: 13.5px; white-space: normal; }
+      .user-menu__who { padding: 9px 10px 10px; }
+      .user-menu__who b { font-size: 14px; }
+      .user-menu__who span { font-size: 12px; }
     }
 
     /* Атрибут hidden должен побеждать правило отображения выше. */
@@ -2279,11 +2289,11 @@
       }
     }
     /**
-     * Ставит меню профиля так, чтобы оно целиком помещалось на экране.
+     * Размещает меню профиля рядом с аватаром.
      *
-     * Простой привязки к краю мало: на узком экране меню шире своего
-     * места, поэтому считаем координаты вручную и не даём ему выйти за
-     * границы окна ни слева, ни справа.
+     * Правый край меню совпадает с правым краем аватара — меню остаётся
+     * приклеенным к нему и растёт влево. Так оно и не отрывается от аватара,
+     * и получает нормальную ширину даже на телефоне.
      */
     function positionUserMenu() {
       if (!userMenu || userMenu.hidden) return;
@@ -2292,33 +2302,19 @@
       const gap = 8;
       const anchor = userBtn.getBoundingClientRect();
 
-      // Ширину ограничиваем экраном, иначе на телефоне меню не поместится.
-      const width = Math.min(280, Math.max(200, userMenu.offsetWidth || 260));
+      // Ширина: до 280px, но не больше свободного места слева от аватара.
+      const roomOnLeft = anchor.right - margin;
+      const width = Math.min(280, roomOnLeft);
       userMenu.style.width = `${width}px`;
 
-      const fitsRight = anchor.right + gap + width <= window.innerWidth - margin;
-      const fitsLeft = anchor.left - gap - width >= margin;
+      // Правый край — по аватару, левый не выходит за экран.
+      const right = Math.min(anchor.right, window.innerWidth - margin);
+      userMenu.style.left = `${Math.max(margin, right - width)}px`;
 
-      let left;
-
-      if (fitsRight) {
-        // Раскрываем вправо от аватара, выравнивая по его левому краю.
-        left = anchor.left;
-      } else if (fitsLeft) {
-        left = anchor.left + anchor.width - width;
-      } else {
-        // Не помещается ни справа, ни слева — прижимаем к краю экрана.
-        left = window.innerWidth - width - margin;
-      }
-
-      // Последняя проверка: не выходим за экран ни с одной стороны.
-      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
-
-      const height = userMenu.offsetHeight || 240;
+      const height = userMenu.offsetHeight || 260;
       const below = anchor.bottom + gap;
       const openUp = below + height > window.innerHeight - margin;
 
-      userMenu.style.left = `${left}px`;
       userMenu.style.top = openUp
         ? `${Math.max(margin, anchor.top - height - gap)}px`
         : `${below}px`;

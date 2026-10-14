@@ -166,8 +166,10 @@
     }
 
     .avatar-menu {
-      position: absolute; top: calc(100% + 10px); left: 0; z-index: 40;
-      min-width: 250px;
+      /* Координаты считает скрипт: меню всегда раскрывается вправо от аватара
+         и остаётся в пределах экрана. */
+      position: fixed; top: 0; left: 0; z-index: 40;
+      min-width: 0; max-width: none;
       background: var(--bg-card);
       border: 1px solid var(--border-strong);
       border-radius: var(--radius-sm);
@@ -316,15 +318,10 @@
       .stat b { font-size: 20px; }
       .stat span { font-size: 10px; letter-spacing: 0; }
 
-      /* Меню аватара прижимаем к правому краю, чтобы не уходило за экран */
-      .avatar-menu {
-        left: auto;
-        right: 0;
-        min-width: 0;
-        width: min(280px, calc(100vw - 28px));
-        max-width: calc(100vw - 28px);
-      }
-
+      /* Меню аватара компактнее: так оно помещается на узком экране */
+      .avatar-menu { padding: 6px; }
+      .avatar-menu button { padding: 10px; font-size: 13.5px; white-space: normal; }
+      .avatar-menu .who { padding: 9px 10px 10px; }
       .avatar-menu .who span { word-break: break-all; }
     }
 
@@ -796,10 +793,47 @@
 
   // --- Меню аватара -------------------------------------------------------
 
+  /**
+   * Размещает меню аватара рядом с ним.
+   *
+   * Правый край меню совпадает с правым краем аватара: меню растёт влево,
+   * поэтому не отрывается от аватара и не выходит за экран.
+   */
+  function positionAvatarMenu() {
+    if (avatarMenu.hidden) return;
+
+    const margin = 12;
+    const gap = 8;
+    const rect = avatarBtn.getBoundingClientRect();
+
+    const roomOnLeft = rect.right - margin;
+    const width = Math.min(280, roomOnLeft);
+    avatarMenu.style.width = `${width}px`;
+
+    const right = Math.min(rect.right, window.innerWidth - margin);
+    avatarMenu.style.left = `${Math.max(margin, right - width)}px`;
+
+    const height = avatarMenu.offsetHeight || 260;
+    const below = rect.bottom + gap;
+    const openUp = below + height > window.innerHeight - margin;
+
+    avatarMenu.style.top = openUp
+      ? `${Math.max(margin, rect.top - height - gap)}px`
+      : `${below}px`;
+  }
+
   avatarBtn.addEventListener("click", (event) => {
     event.stopPropagation();
-    avatarMenu.hidden = !avatarMenu.hidden;
+    const willOpen = avatarMenu.hidden;
+
+    // Показываем до расчёта: иначе размеры меню ещё неизвестны.
+    avatarMenu.hidden = !willOpen;
+    if (willOpen) positionAvatarMenu();
   });
+
+  // При прокрутке и повороте экрана меню следует за аватаром.
+  window.addEventListener("resize", () => { if (!avatarMenu.hidden) positionAvatarMenu(); });
+  window.addEventListener("scroll", () => { if (!avatarMenu.hidden) positionAvatarMenu(); }, true);
 
   document.addEventListener("click", (event) => {
     if (!event.target.closest(".avatar-box")) avatarMenu.hidden = true;
