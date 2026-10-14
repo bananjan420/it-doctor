@@ -130,6 +130,15 @@
 
     .owner-toast b { color: var(--accent); }
 
+    /* Отметка сборки: помогает понять, свежая версия открыта или старая */
+    .build {
+      margin: 24px 0 0;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: .7;
+    }
+
     /* --- Шапка кабинета --- */
     .head {
       display: flex; flex-wrap: wrap; gap: 16px;
@@ -807,12 +816,17 @@
     const rect = avatarBtn.getBoundingClientRect();
 
     // Ширина фиксированная (260px): меню не растягивается на весь экран.
+    // Ставим со словом important, чтобы старые стили из кэша браузера
+    // не могли растянуть меню или сдвинуть его влево.
     const roomOnLeft = rect.right - margin;
     const width = Math.min(260, roomOnLeft);
-    avatarMenu.style.width = `${width}px`;
+    avatarMenu.style.setProperty("width", `${width}px`, "important");
 
     const right = Math.min(rect.right, window.innerWidth - margin);
-    avatarMenu.style.left = `${Math.max(margin, right - width)}px`;
+    const left = Math.max(margin, right - width);
+    avatarMenu.style.setProperty("left", `${left}px`, "important");
+    avatarMenu.style.setProperty("right", "auto", "important");
+    avatarMenu.style.setProperty("position", "fixed", "important");
 
     const height = avatarMenu.offsetHeight || 260;
     const below = rect.bottom + gap;
@@ -1087,6 +1101,20 @@
     // Считаем только быстрые нажатия подряд.
     ownerTapTimer = setTimeout(() => { ownerTaps = 0; }, OWNER_TAP_WINDOW_MS);
   });
+
+  // Отметка сборки страницы
+  const buildStamp = $("buildStamp");
+
+  if (buildStamp) {
+    try {
+      const stamp = new Date(document.lastModified);
+      buildStamp.textContent = Number.isNaN(stamp.getTime())
+        ? "неизвестно"
+        : new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(stamp);
+    } catch {
+      buildStamp.textContent = "неизвестно";
+    }
+  }
 
   // --- Старт --------------------------------------------------------------
 

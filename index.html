@@ -183,7 +183,18 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 24px;
       height: var(--header-height);
+    }
+
+    /* Логотип занимает левый край, всё остальное собирается вправо */
+    .logo { margin-right: auto; }
+
+    /* Меню и кнопки собраны в один блок: между ними ровные отступы */
+    .header__auth {
+      display: flex;
+      align-items: center;
+      gap: 14px;
     }
 
     .logo {
@@ -408,16 +419,7 @@
       align-items: center;
     }
 
-    /* Профиль клиента стоит справа, рядом с меню — на всех экранах.
-       Логотип уводим первым в порядке, поэтому профиль оказывается вправо. */
-    .logo { order: -2; }
-    .user-box { order: 0; margin-left: auto; }
-    .nav { order: 0; margin-left: 0; }
-    .header__cta { order: 1; }
-    .burger { order: 2; }
 
-    /* Кнопка входа занимает то же место справа, пока клиент не вошёл */
-    .login-btn { order: 0; margin-left: auto; }
 
     .user-btn {
       display: flex;
@@ -1466,32 +1468,7 @@
         <span>IT Доктор</span>
       </a>
 
-      <!-- Кнопка входа: видна, пока клиент не вошёл -->
-      <button type="button" class="login-btn" id="siteLoginBtn" hidden>
-        <i class="fas fa-right-to-bracket"></i>
-        <span>Войти</span>
-      </button>
-
-      <!-- Если клиент вошёл, слева появляется его аватар с меню -->
-      <div class="user-box" id="userBox" hidden>
-        <button class="user-btn" id="userBtn" aria-label="Профиль">
-          <span class="user-avatar" id="userAvatar"></span>
-          <span class="user-name" id="userName"></span>
-        </button>
-
-        <div class="user-menu" id="userMenu" hidden>
-          <div class="user-menu__who">
-            <b id="userMenuName">Клиент</b>
-            <span id="userMenuEmail"></span>
-          </div>
-          <a href="/account/" id="userMenuCabinet">📋 Мои заявки</a>
-          <a href="/account/?profile=1" id="userMenuProfile">👤 Личные данные</a>
-          <a href="/account/?lead=1" id="userMenuLead">📝 Оставить заявку</a>
-          <div class="user-menu__sep"></div>
-          <button type="button" id="userLogout">🚪 Выйти из профиля</button>
-        </div>
-      </div>
-
+      <!-- Меню сайта -->
       <nav class="nav" aria-label="Основная навигация">
         <a href="#services">Услуги</a>
         <a href="#about">О мастере</a>
@@ -1499,7 +1476,36 @@
         <a href="/account/" id="navAccount">Личный кабинет</a>
       </nav>
 
-      <a href="#lead" class="btn btn-primary header__cta">Заказать звонок</a>
+      <!-- Профиль клиента и кнопки справа -->
+      <div class="header__auth">
+        <!-- Кнопка входа: видна, пока клиент не вошёл -->
+        <button type="button" class="login-btn" id="siteLoginBtn" hidden>
+          <i class="fas fa-right-to-bracket"></i>
+          <span>Войти</span>
+        </button>
+
+        <!-- Если клиент вошёл, появляется его аватар с меню -->
+        <div class="user-box" id="userBox" hidden>
+          <button class="user-btn" id="userBtn" aria-label="Профиль">
+            <span class="user-avatar" id="userAvatar"></span>
+            <span class="user-name" id="userName"></span>
+          </button>
+
+          <div class="user-menu" id="userMenu" hidden>
+            <div class="user-menu__who">
+              <b id="userMenuName">Клиент</b>
+              <span id="userMenuEmail"></span>
+            </div>
+            <a href="/account/" id="userMenuCabinet">📋 Мои заявки</a>
+            <a href="/account/?profile=1" id="userMenuProfile">👤 Личные данные</a>
+            <a href="/account/?lead=1" id="userMenuLead">📝 Оставить заявку</a>
+            <div class="user-menu__sep"></div>
+            <button type="button" id="userLogout">🚪 Выйти из профиля</button>
+          </div>
+        </div>
+
+        <a href="#lead" class="btn btn-primary header__cta">Заказать звонок</a>
+      </div>
 
       <button class="burger" id="burger" aria-label="Открыть меню" aria-expanded="false">
         <span></span>
