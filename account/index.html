@@ -103,10 +103,23 @@
     .notice { padding: 16px; border-radius: var(--radius-sm); font-size: 14px; margin-top: 14px; display: none; }    .notice[data-kind="error"] { display: block; background: rgba(255,107,107,.12); color: var(--danger); border: 1px solid rgba(255,107,107,.3); }
     .notice[data-kind="ok"] { display: block; background: rgba(52,211,153,.12); color: var(--ok); border: 1px solid rgba(52,211,153,.3); }
 
-    /* Неприметный вход для владельца: виден, но не бросается в глаза. */
-    .owner-entry { margin: 18px 0 0; text-align: right; font-size: 12px; }
-    .owner-entry a { color: var(--text-muted); text-decoration: none; }
-    .owner-entry a:hover { color: var(--accent); }
+    /* Вход для владельца: спокойный, но заметный, если искать глазами. */
+    .owner-entry {
+      margin: 20px 0 0;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, .07);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .owner-entry a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(0, 212, 255, .4);
+      padding-bottom: 2px;
+    }
+
+    .owner-entry a:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
     /* --- Шапка кабинета --- */
     .head {
@@ -279,7 +292,7 @@
 <div class="wrap">
 
   <!-- Вход и регистрация -->
-  <section class="card" id="authView">
+  <section class="card hidden" id="authView">
     <h1>Личный <span>кабинет</span></h1>
     <p class="sub">Войдите, чтобы видеть свои заявки и их статусы.</p>
 
@@ -323,7 +336,6 @@
           <button class="avatar-btn" id="avatarBtn" title="Личные данные">
             <span class="initials" id="avatarInitials">?</span>
           </button>
-
           <div class="avatar-menu" id="avatarMenu" hidden>
             <div class="who">
               <b id="menuName">Клиент</b>
@@ -667,6 +679,9 @@
 
       authView.classList.add("hidden");
       cabinet.classList.remove("hidden");
+      // Запоминаем, что вход состоялся: при следующем заходе не показываем
+      // форму входа ни на мгновение.
+      sessionStorage.setItem("itd_client_seen", "1");
 
       applyProfile(payload.profile || {});
       render(payload.leads || []);
@@ -735,6 +750,7 @@
     avatarMenu.hidden = true;
     try { await api("/api/auth/login", { method: "DELETE", auth: true }); } catch { /* выходим локально */ }
     setToken("");
+    sessionStorage.removeItem("itd_client_seen");
     showAuth();
     notify(authNotice, "Вы вышли из профиля.", "ok");
   });
@@ -924,7 +940,16 @@
 
   // --- Старт --------------------------------------------------------------
 
-  if (token()) openCabinet(); else showAuth();
+  // Если вход уже выполнялся в этой вкладке, показываем кабинет сразу,
+  // чтобы не мелькала форма входа. Данные всё равно проверит сервер.
+  const hadSession = Boolean(sessionStorage.getItem("itd_client_seen"));
+
+  if (token()) {
+    if (hadSession) cabinet.classList.remove("hidden");
+    openCabinet({ silent: hadSession });
+  } else {
+    showAuth();
+  }
 </script>
 </body>
 </html>

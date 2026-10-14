@@ -304,7 +304,7 @@
     .user-menu {
       position: absolute;
       top: calc(100% + 10px);
-      right: 0;
+      left: 0;
       z-index: 1002;
       min-width: 240px;
       padding: 8px;
@@ -1265,14 +1265,7 @@
         <span>IT Доктор</span>
       </a>
 
-      <nav class="nav" aria-label="Основная навигация">
-        <a href="#services">Услуги</a>
-        <a href="#about">О мастере</a>
-        <a href="#contacts">Контакты</a>
-        <a href="/account/" id="navAccount">Личный кабинет</a>
-      </nav>
-
-      <!-- Если клиент вошёл, здесь появляется его аватар с меню -->
+      <!-- Если клиент вошёл, слева появляется его аватар с меню -->
       <div class="user-box" id="userBox" hidden>
         <button class="user-btn" id="userBtn" aria-label="Профиль">
           <span class="user-avatar" id="userAvatar"></span>
@@ -1291,6 +1284,13 @@
           <button type="button" id="userLogout">🚪 Выйти из профиля</button>
         </div>
       </div>
+
+      <nav class="nav" aria-label="Основная навигация">
+        <a href="#services">Услуги</a>
+        <a href="#about">О мастере</a>
+        <a href="#contacts">Контакты</a>
+        <a href="/account/" id="navAccount">Личный кабинет</a>
+      </nav>
 
       <a href="#lead" class="btn btn-primary header__cta">Заказать звонок</a>
 
@@ -1849,8 +1849,6 @@
       document.getElementById("userMenuEmail").textContent = profile.email || "";
 
       userBox.hidden = false;
-      // Ссылка в меню сайта становится не нужна: профиль и так виден.
-      if (navAccount) navAccount.hidden = true;
     }
 
     async function loadClientProfile() {
@@ -1913,9 +1911,9 @@
         }
 
         localStorage.removeItem(CLIENT_TOKEN_KEY);
+        sessionStorage.removeItem("itd_client_seen");
         userBox.hidden = true;
         userMenu.hidden = true;
-        if (navAccount) navAccount.hidden = false;
       });
     }
 
