@@ -162,82 +162,52 @@
     .stat b { display: block; font-size: 24px; font-weight: 800; }
     .stat span { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 
-    /* --- Панель фильтров: всегда на виду --- */
-    .filter-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px 14px;
-      align-items: flex-start;
-      padding: 16px;
-      margin-bottom: 16px;
-      border-radius: var(--radius);
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-    }
-
-    .fb-item { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
-    .fb-item.fb-search { flex: 1; min-width: 200px; }
-    .fb-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
-
-    .filter-bar select,
-    .filter-bar input[type="search"],
-    .filter-bar input[type="date"] {
-      font-size: 13px;
-      padding: 8px 10px;
-    }
-
-    .fb-reset { align-self: flex-end; font-size: 13px; padding: 9px 14px; }
-
-    /* Мягкая подсветка: значок в шапке подсказывает, куда смотреть */
-    .fb-flash .fb-label,
-    .fb-flash .fb-toggle { color: var(--accent); }
-
-    .fb-flash { animation: fb-flash 1.2s ease; }
-
-    @keyframes fb-flash {
-      0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, .45); }
-      100% { box-shadow: 0 0 0 12px rgba(0, 212, 255, 0); }
-    }
-
-    /* Список с галочками прямо в панели, без всплывающих окон */
-    .filter-bar .multi { position: relative; }
-    .filter-bar .multi-panel {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      z-index: 60;
-      min-width: 220px;
-      max-height: 280px;
-      overflow-y: auto;
-      padding: 10px;
+    /* Окно фильтра рисуется поверх страницы: так его не обрежет ни
+       таблица, ни карточка. Координаты задаёт скрипт при открытии. */
+    .filter-pop {
+      position: fixed;
+      z-index: 70;
+      box-sizing: border-box;
+      max-width: min(320px, calc(100vw - 24px));
+      display: block;
+      padding: 14px;
       border-radius: var(--radius-sm);
       background: var(--bg-card);
       border: 1px solid var(--border-strong);
       box-shadow: var(--shadow);
-      display: none;
     }
 
-    /* Открытый список показываем, закрытый — прячем */
-    .filter-bar .multi[data-open="true"] .multi-panel { display: block; }
+    .filter-pop[hidden] { display: none; }
 
-    /* Кнопка, которая открывает список: показывает, что выбрано */
-    .fb-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      font-size: 13px;
-      padding: 8px 10px;
-      text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .pop-title {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
     }
 
-    .fb-toggle[data-filled="true"] {
-      color: var(--accent);
-      border-color: var(--border-strong);
-      background: rgba(0, 212, 255, .08);
+    .filter-pop input,
+    .filter-pop select { font-size: 13px; padding: 8px 10px; margin-bottom: 8px; }
+
+    .pop-clear {
+      margin-top: 10px;
+      font-size: 12px;
+      padding: 7px 12px;
+      color: var(--text-secondary);
+      background: transparent;
+    }
+
+    .pop-clear:hover { color: var(--accent); }
+
+    .filter-pop .multi-panel {
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
     }
 
     /* --- Таблица --- */
@@ -461,63 +431,18 @@
 
   <div class="stats" id="stats"></div>
 
-  <!-- Фильтры видно всегда: так их невозможно не найти -->
-  <div class="filter-bar">
-    <div class="fb-item" data-fb="status">
-      <span class="fb-label">Статус</span>
-      <div class="multi" data-multi="status"><button type="button" class="fb-toggle" data-fb-toggle="status">Все статусы</button><div class="multi-panel" data-multi-panel></div></div>
-    </div>
-
-    <div class="fb-item" data-fb="source">
-      <span class="fb-label">Источник</span>
-      <div class="multi" data-multi="source"><button type="button" class="fb-toggle" data-fb-toggle="source">Все источники</button><div class="multi-panel" data-multi-panel></div></div>
-    </div>
-
-    <div class="fb-item" data-fb="service">
-      <span class="fb-label">Услуга</span>
-      <div class="multi" data-multi="service"><button type="button" class="fb-toggle" data-fb-toggle="service">Все услуги</button><div class="multi-panel" data-multi-panel></div></div>
-    </div>
-
-    <div class="fb-item" data-fb="date">
-      <span class="fb-label">Период</span>
-      <select id="fPreset">
-        <option value="">За всё время</option>
-        <option value="today">Сегодня</option>
-        <option value="yesterday">Вчера</option>
-        <option value="week">Эта неделя</option>
-        <option value="lastWeek">Прошлая неделя</option>
-        <option value="month">Этот месяц</option>
-        <option value="lastMonth">Прошлый месяц</option>
-        <option value="7">Последние 7 дней</option>
-        <option value="30">Последние 30 дней</option>
-        <option value="custom">Свой промежуток</option>
-      </select>
-      <div class="date-range" id="customRange" hidden>
-        <input type="date" id="fFrom" title="С даты" />
-        <input type="date" id="fTo" title="По дату" />
-      </div>
-    </div>
-
-    <div class="fb-item fb-search" data-fb="search">
-      <span class="fb-label">Поиск</span>
-      <input type="search" id="fSearch" placeholder="имя, телефон, текст" />
-    </div>
-
-    <button type="button" class="fb-reset" id="resetFilters">Сбросить всё</button>
-  </div>
-
   <div class="card table-card">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th><div class="th-top"><button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="date" aria-label="Фильтр: Дата" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div></th>
-            <th><div class="th-top"><button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="search" aria-label="Фильтр: Имя" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div></th>
+            <th><div class="th-top"><button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="date" aria-label="Фильтр: Дата" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="date" hidden><span class="pop-title">Период</span><select id="fPreset"><option value="">За всё время</option><option value="today">Сегодня</option><option value="yesterday">Вчера</option><option value="week">Эта неделя</option><option value="lastWeek">Прошлая неделя</option><option value="month">Этот месяц</option><option value="lastMonth">Прошлый месяц</option><option value="7">Последние 7 дней</option><option value="30">Последние 30 дней</option><option value="custom">Свой промежуток</option></select><div class="date-range" id="customRange" hidden><input type="date" id="fFrom" title="С даты" /><input type="date" id="fTo" title="По дату" /></div><button type="button" class="pop-clear" data-filter-clear="date">Сбросить</button></div></th>
+            <th><div class="th-top"><button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="search" aria-label="Фильтр: Имя" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="search" hidden><span class="pop-title">Поиск по всем полям</span><input type="text" id="fSearch" placeholder="имя, телефон, текст" /><button type="button" class="pop-clear" data-filter-clear="search">Сбросить</button></div></th>
             <th><div class="th-top"><button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button></div></th>
-            <th><div class="th-top"><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="service" aria-label="Фильтр: Услуга" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div></th>
+            <th><div class="th-top"><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="service" aria-label="Фильтр: Услуга" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="service" hidden><span class="pop-title">Услуги</span><div class="multi" data-multi="service"><div class="multi-panel" data-multi-panel></div></div></div></th>
             <th>Сообщение</th>
-            <th><div class="th-top"><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="source" aria-label="Фильтр: Источник" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div></th>
-            <th><div class="th-top"><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="status" aria-label="Фильтр: Статус" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div></th>
+            <th><div class="th-top"><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="source" aria-label="Фильтр: Источник" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="source" hidden><span class="pop-title">Источники</span><div class="multi" data-multi="source"><div class="multi-panel" data-multi-panel></div></div></div></th>
+            <th><div class="th-top"><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="status" aria-label="Фильтр: Статус" title="Настроить фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="status" hidden><span class="pop-title">Статусы</span><div class="multi" data-multi="status"><div class="multi-panel" data-multi-panel></div></div></div></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -802,119 +727,50 @@
       '<div class="panel-actions"><button type="button" data-multi-clear>Снять всё</button></div>';
   }
 
-  /**
-   * Ставит окно фильтра точно под его кнопкой.
-   *
-   * Окно вынесено из таблицы (position: fixed), иначе оно обрезается
-   * границами карточки, когда в таблице мало строк.
-   */
-  function positionPanel(panel, toggle) {
-    const rect = toggle.getBoundingClientRect();
-    const width = Math.max(rect.width, 230);
-    const left = Math.min(rect.left, window.innerWidth - width - 12);
-    const below = rect.bottom + 6;
-    const panelHeight = panel.offsetHeight || 240;
+  /** Открывает одно окно фильтра и закрывает остальные. */
+  function openFilterPanel(name, button) {
+    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
+      panel.hidden = true;
+    });
 
-    // Если снизу не помещается — открываем вверх.
-    const openUp = below + panelHeight > window.innerHeight - 12;
-    const top = openUp ? Math.max(12, rect.top - panelHeight - 6) : below;
+    const panel = document.querySelector(`[data-filter-panel="${name}"]`);
+    if (!panel) return;
 
-    panel.style.left = `${Math.max(12, left)}px`;
+    panel.hidden = false;
+
+    // Координаты считаем от значка воронки. Если что-то пойдёт не так,
+    // окно всё равно появится: сначала ставим запасную позицию.
+    const width = Math.max(panel.offsetWidth || 260, 240);
+    const height = panel.offsetHeight || 220;
+
+    let left = 12;
+    let top = 80;
+
+    try {
+      const rect = button.getBoundingClientRect();
+      left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+      const below = rect.bottom + 8;
+      top = below + height > window.innerHeight - 12
+        ? Math.max(12, rect.top - height - 8)
+        : below;
+    } catch {
+      // Оставляем запасную позицию.
+    }
+
+    panel.style.left = `${left}px`;
     panel.style.top = `${top}px`;
     panel.style.width = `${width}px`;
   }
 
-  /** Открывает или закрывает список значений в панели фильтров. */
-  function toggleMulti(name, open) {
-    const box = document.querySelector(`.filter-bar [data-multi="${name}"]`);
-    if (!box) return;
-
-    const willOpen = open === undefined ? box.dataset.open !== "true" : open;
-
-    // Открытым может быть только один список.
-    document.querySelectorAll(".filter-bar .multi").forEach((other) => {
-      other.dataset.open = "false";
+  function closeFilterPanels() {
+    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
+      panel.hidden = true;
     });
-
-    box.dataset.open = willOpen ? "true" : "false";
-  }
-
-  function closeAllMulti() {
-    document.querySelectorAll(".filter-bar .multi").forEach((box) => {
-      box.dataset.open = "false";
-    });
-  }
-
-  /** Подписывает кнопку фильтра: «Все статусы» или «Выбрано: 2». */
-  function renderToggleLabel(name) {
-    const button = document.querySelector(`[data-fb-toggle="${name}"]`);
-    if (!button) return;
-
-    const options = MULTI_OPTIONS[name]();
-    const chosen = filters[name];
-
-    const placeholder = { status: "Все статусы", source: "Все источники", service: "Все услуги" }[name] || "Все";
-
-    if (chosen.length === 0) {
-      button.textContent = placeholder;
-      button.dataset.filled = "false";
-      return;
-    }
-
-    if (chosen.length === 1) {
-      const only = options.find((option) => option.value === chosen[0]);
-      button.textContent = only ? only.label : "1 выбрано";
-    } else {
-      button.textContent = `Выбрано: ${chosen.length}`;
-    }
-
-    button.dataset.filled = "true";
   }
 
   function renderAllMulti() {
-    for (const name of Object.keys(MULTI_OPTIONS)) {
-      renderMulti(name);
-      renderToggleLabel(name);
-    }
+    for (const name of Object.keys(MULTI_OPTIONS)) renderMulti(name);
   }
-
-  function closeAllPanels() {
-    document.querySelectorAll("[data-multi-panel]").forEach((panel) => { panel.hidden = true; });
-  }
-
-  // --- Значки фильтров ----------------------------------------------------
-
-  /** Что именно задано в фильтрах: нужно для значков и счётчика. */
-  function activeFilters() {
-    const { from, to } = periodRange();
-
-    return {
-      date: Boolean(from || to || filters.preset),
-      search: Boolean(filters.q.trim()),
-      service: filters.service.length > 0,
-      source: filters.source.length > 0,
-      status: filters.status.length > 0
-    };
-  }
-
-  /** Показывает точку у значков, в которых есть активный фильтр. */
-  function renderFilterMarks() {
-    const active = activeFilters();
-
-    document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
-      button.dataset.active = active[button.dataset.filterToggle] ? "true" : "false";
-    });
-
-    // В подписи столбца тоже полезно видеть, что фильтр включён.
-    const count = Object.values(active).filter(Boolean).length;
-    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
-      panel.dataset.active = active[panel.dataset.filterPanel] ? "true" : "false";
-    });
-
-    return count;
-  }
-
-
 
   // --- Загрузка -----------------------------------------------------------
 
@@ -1101,47 +957,40 @@
     load();
   });
 
-  // Клики: значки в шапке, переключатели списков, галочки и сброс.
+  // Клики: значок воронки, галочки в списке, сброс фильтра.
   document.addEventListener("click", (event) => {
-    const filterToggle = event.target.closest("[data-filter-toggle]");
-    const barToggle = event.target.closest("[data-fb-toggle]");
-    const reset = event.target.closest("#resetFilters");
-    const clearMulti = event.target.closest("[data-multi-clear]");
+    const funnel = event.target.closest("[data-filter-toggle]");
+    const clear = event.target.closest("[data-filter-clear]");
     const checkbox = event.target.closest(".multi-panel input[type=checkbox]");
 
-    // Значок в шапке только подсвечивает нужный фильтр в панели.
-    if (filterToggle) {
+    if (funnel) {
       event.stopPropagation();
-      focusFilter(filterToggle.dataset.filterToggle);
+      const name = funnel.dataset.filterToggle;
+      const panel = document.querySelector(`[data-filter-panel="${name}"]`);
+      const wasOpen = panel && !panel.hidden;
+
+      closeFilterPanels();
+      if (!wasOpen) openFilterPanel(name, funnel);
       return;
     }
 
-    if (barToggle) {
-      event.stopPropagation();
-      toggleMulti(barToggle.dataset.fbToggle);
-      return;
-    }
+    if (clear) {
+      const name = clear.dataset.filterClear;
 
-    if (reset) {
-      filters = { ...EMPTY_FILTERS, status: [], source: [], service: [] };
-      fPreset.value = "";
-      fFrom.value = "";
-      fTo.value = "";
-      fSearch.value = "";
-      customRange.hidden = true;
+      if (name === "date") {
+        filters.preset = "";
+        filters.from = "";
+        filters.to = "";
+        fPreset.value = "";
+        fFrom.value = "";
+        fTo.value = "";
+        customRange.hidden = true;
+      } else if (name === "search") {
+        filters.q = "";
+        fSearch.value = "";
+      }
+
       saveFilters();
-      renderAllMulti();
-      renderFilterMarks();
-      load();
-      return;
-    }
-
-    if (clearMulti) {
-      const name = clearMulti.closest("[data-multi]").dataset.multi;
-      filters[name] = [];
-      saveFilters();
-      renderMulti(name);
-      renderToggleLabel(name);
       renderFilterMarks();
       load();
       return;
@@ -1155,32 +1004,29 @@
       filters[name] = [...set];
       saveFilters();
       renderMulti(name);
-      renderToggleLabel(name);
       renderFilterMarks();
       load();
       return;
     }
 
-    // Клик мимо списка закрывает его.
-    if (!event.target.closest(".filter-bar .multi")) closeAllMulti();
+    // Клик мимо открытого окна закрывает его.
+    if (!event.target.closest(".filter-pop")) closeFilterPanels();
   });
 
-  /** Подсвечивает нужный фильтр в панели и подводит к нему взгляд. */
-  function focusFilter(name) {
-    const item = document.querySelector(`.filter-bar [data-fb="${name}"]`);
-    if (!item) return;
-
-    // date и search не имеют списка — просто мягко подсвечиваем поле.
-    if (["status", "source", "service"].includes(name)) {
-      toggleMulti(name, true);
-    }
-
-    item.classList.add("fb-flash");
-    setTimeout(() => item.classList.remove("fb-flash"), 1200);
+  // Открытое окно следует за своим значком при прокрутке и повороте экрана.
+  function repositionOpenPanels() {
+    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
+      if (panel.hidden) return;
+      const button = document.querySelector(`[data-filter-toggle="${panel.dataset.filterPanel}"]`);
+      if (button) openFilterPanel(panel.dataset.filterPanel, button);
+    });
   }
 
-  // Окно привязано к своему столбцу, поэтому при прокрутке пересчитывать
-  // ничего не нужно.
+  window.addEventListener("resize", repositionOpenPanels);
+  document.addEventListener("scroll", repositionOpenPanels, true);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeFilterPanels();
+  });
 
   // --- Период -------------------------------------------------------------
 
