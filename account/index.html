@@ -100,9 +100,13 @@
     .tabs button { flex: 1; border: none; background: transparent; color: var(--text-secondary); font-weight: 600; }
     .tabs button[data-active="true"] { background: var(--accent-gradient); color: #04121A; box-shadow: var(--shadow-accent); }
 
-    .notice { padding: 16px; border-radius: var(--radius-sm); font-size: 14px; margin-top: 14px; display: none; }
-    .notice[data-kind="error"] { display: block; background: rgba(255,107,107,.12); color: var(--danger); border: 1px solid rgba(255,107,107,.3); }
+    .notice { padding: 16px; border-radius: var(--radius-sm); font-size: 14px; margin-top: 14px; display: none; }    .notice[data-kind="error"] { display: block; background: rgba(255,107,107,.12); color: var(--danger); border: 1px solid rgba(255,107,107,.3); }
     .notice[data-kind="ok"] { display: block; background: rgba(52,211,153,.12); color: var(--ok); border: 1px solid rgba(52,211,153,.3); }
+
+    /* Неприметный вход для владельца: виден, но не бросается в глаза. */
+    .owner-entry { margin: 18px 0 0; text-align: right; font-size: 12px; }
+    .owner-entry a { color: var(--text-muted); text-decoration: none; }
+    .owner-entry a:hover { color: var(--accent); }
 
     /* --- Шапка кабинета --- */
     .head {
@@ -304,6 +308,11 @@
     </form>
 
     <div class="notice" id="authNotice"></div>
+
+    <!-- Неприметный вход для владельца сервиса -->
+    <p class="owner-entry">
+      <a href="/admin/" rel="nofollow">Вход для владельца</a>
+    </p>
   </section>
 
   <!-- Кабинет -->

@@ -244,6 +244,118 @@
       display: none;
     }
 
+    /* --- Профиль клиента в шапке --- */
+    .user-box {
+      position: relative;
+      display: none;
+      align-items: center;
+    }
+
+    .user-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 12px 6px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .user-btn:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-accent);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--accent-gradient);
+      color: #04121A;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .user-name {
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      z-index: 1002;
+      min-width: 240px;
+      padding: 8px;
+      border-radius: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .user-menu__who {
+      padding: 10px 12px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+      margin-bottom: 6px;
+    }
+
+    .user-menu__who b { display: block; font-size: 15px; }
+    .user-menu__who span { color: var(--text-muted); font-size: 13px; word-break: break-all; }
+
+    .user-menu a,
+    .user-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 11px 12px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .user-menu a:hover,
+    .user-menu button:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    .user-menu button:hover { color: #FF6B6B; }
+    .user-menu__sep { height: 1px; background: rgba(255, 255, 255, .07); margin: 6px 4px; }
+
+    @media (min-width: 1024px) {
+      .user-box { display: flex; }
+    }
+
+    /* Атрибут hidden должен побеждать правило отображения выше. */
+    .user-box[hidden] { display: none !important; }
+
     .burger {
       display: flex;
       flex-direction: column;
@@ -1157,8 +1269,28 @@
         <a href="#services">Услуги</a>
         <a href="#about">О мастере</a>
         <a href="#contacts">Контакты</a>
-        <a href="/account/">Личный кабинет</a>
+        <a href="/account/" id="navAccount">Личный кабинет</a>
       </nav>
+
+      <!-- Если клиент вошёл, здесь появляется его аватар с меню -->
+      <div class="user-box" id="userBox" hidden>
+        <button class="user-btn" id="userBtn" aria-label="Профиль">
+          <span class="user-avatar" id="userAvatar"></span>
+          <span class="user-name" id="userName"></span>
+        </button>
+
+        <div class="user-menu" id="userMenu" hidden>
+          <div class="user-menu__who">
+            <b id="userMenuName">Клиент</b>
+            <span id="userMenuEmail"></span>
+          </div>
+          <a href="/account/" id="userMenuCabinet">📋 Мои заявки</a>
+          <a href="/account/" id="userMenuProfile">👤 Личные данные</a>
+          <a href="#lead" id="userMenuLead">📝 Оставить заявку</a>
+          <div class="user-menu__sep"></div>
+          <button type="button" id="userLogout">🚪 Выйти из профиля</button>
+        </div>
+      </div>
 
       <a href="#lead" class="btn btn-primary header__cta">Заказать звонок</a>
 
@@ -1677,6 +1809,117 @@
       status.className = type ? `form-status form-status--${type}` : "form-status";
     }
 
+    // ===== Профиль клиента в шапке =====
+    // Если клиент вошёл в личный кабинет, в шапке показываем его аватар с меню.
+    const CLIENT_TOKEN_KEY = "itd_client_token";
+
+    const userBox = document.getElementById("userBox");
+    const userBtn = document.getElementById("userBtn");
+    const userMenu = document.getElementById("userMenu");
+    const userAvatar = document.getElementById("userAvatar");
+    const userName = document.getElementById("userName");
+    const navAccount = document.getElementById("navAccount");
+
+    function clientToken() {
+      return localStorage.getItem(CLIENT_TOKEN_KEY) || "";
+    }
+
+    function clientInitials(name, email) {
+      const source = String(name || email || "?").trim();
+      const parts = source.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return source.slice(0, 2).toUpperCase();
+    }
+
+    function renderClient(profile) {
+      // Профиль запоминаем: из него берём имя для формы заявки.
+      window.__clientProfile = profile;
+
+      const label = clientInitials(profile.name, profile.email);
+
+      userAvatar.innerHTML = profile.avatar
+        ? `<img src="${profile.avatar}" alt="Аватар" />`
+        : label;
+
+      // Показываем имя, а если его нет — часть почты до собаки.
+      const short = profile.name || String(profile.email || "").split("@")[0];
+      userName.textContent = short;
+
+      document.getElementById("userMenuName").textContent = profile.name || "Клиент";
+      document.getElementById("userMenuEmail").textContent = profile.email || "";
+
+      userBox.hidden = false;
+      // Ссылка в меню сайта становится не нужна: профиль и так виден.
+      if (navAccount) navAccount.hidden = true;
+    }
+
+    async function loadClientProfile() {
+      if (!clientToken()) return;
+
+      try {
+        const response = await fetch("/api/me/leads", {
+          headers: { Authorization: `Bearer ${clientToken()}` }
+        });
+
+        if (!response.ok) {
+          // Токен устарел — просто не показываем профиль.
+          if (response.status === 401) localStorage.removeItem(CLIENT_TOKEN_KEY);
+          return;
+        }
+
+        const payload = await response.json();
+        if (payload.ok && payload.profile) renderClient(payload.profile);
+      } catch {
+        // Сеть недоступна: шапка остаётся обычной.
+      }
+    }
+    if (userBtn) {
+      userBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        userMenu.hidden = !userMenu.hidden;
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!event.target.closest("#userBox")) userMenu.hidden = true;
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") userMenu.hidden = true;
+      });
+
+      // Заявка из шапки: подставляем данные профиля и ведём к форме.
+      const leadLink = document.getElementById("userMenuLead");
+      if (leadLink) {
+        leadLink.addEventListener("click", () => {
+          userMenu.hidden = true;
+
+          const nameInput = leadForm.name;
+          if (window.__clientProfile?.name && !nameInput.value.trim()) {
+            nameInput.value = window.__clientProfile.name;
+          }
+        });
+      }
+
+      document.getElementById("userLogout").addEventListener("click", async () => {
+        const token = clientToken();
+
+        try {
+          await fetch("/api/auth/login", {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` }
+          });
+        } catch {
+          // Выходим локально в любом случае.
+        }
+
+        localStorage.removeItem(CLIENT_TOKEN_KEY);
+        userBox.hidden = true;
+        userMenu.hidden = true;
+        if (navAccount) navAccount.hidden = false;
+      });
+    }
+
+    loadClientProfile();
   </script>
 </body>
 </html>
