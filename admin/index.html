@@ -998,6 +998,7 @@
   document.addEventListener("click", (event) => {
     const funnel = event.target.closest("[data-filter-toggle]");
     const clear = event.target.closest("[data-filter-clear]");
+    const clearMulti = event.target.closest("[data-multi-clear]");
     const checkbox = event.target.closest(".multi-panel input[type=checkbox]");
 
     if (funnel) {
@@ -1033,6 +1034,17 @@
       return;
     }
 
+    // «Снять всё»: очищаем фильтр этого списка целиком.
+    if (clearMulti) {
+      const name = clearMulti.closest("[data-multi]").dataset.multi;
+      filters[name] = [];
+      saveFilters();
+      renderMulti(name);
+      renderFilterMarks();
+      load();
+      return;
+    }
+
     if (checkbox) {
       const name = checkbox.closest("[data-multi]").dataset.multi;
       const value = checkbox.value;
@@ -1046,7 +1058,8 @@
       return;
     }
 
-    // Клик мимо открытого окна закрывает его.
+    // Клик мимо открытого окна закрывает его. Нажатия внутри окна
+    // (в том числе «Снять всё») окно не закрывают.
     if (!event.target.closest(".filter-pop")) closeFilterPanels();
   });
 

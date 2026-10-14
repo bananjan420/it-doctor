@@ -28,6 +28,9 @@ export const STATUS_LABELS = {
 // Источники заявки. «account» — заявки клиентов из личного кабинета.
 export const SOURCES = ["website", "mini_app", "telegram_bot", "account"];
 
+// Значение, которым сайт помечает заявку без выбранной услуги.
+const PLACEHOLDER_SERVICE = "Не выбрана";
+
 export const SOURCE_LABELS = {
   website: "Сайт",
   mini_app: "Mini App",
@@ -190,13 +193,16 @@ async function handleList(request, env, origin) {
   const named = serviceValues.filter((value) => value && value !== "none");
 
   if (onlyEmpty) {
-    params.set("service", "is.null");
+    // «Не выбрана» встречается в двух видах: пусто в базе или строка,
+    // которую записал сайт. Показываем оба случая.
+    params.set("or", `(service.is.null,service.eq.${PLACEHOLDER_SERVICE})`);
   } else if (named.length === 1) {
-    params.set("service", `eq.${encodeFilterValue(named[0])}`);
+    // Значение подставляем как есть: кодированием займётся URLSearchParams.
+    // Ручное кодирование приводило к двойному экранированию и пустому ответу.
+    params.set("service", `eq.${named[0]}`);
   } else if (named.length > 1) {
-    // Названия услуг содержат пробелы и тире: каждое значение кодируем,
-    // иначе пробел превратится в «+» и база поймёт фильтр неправильно.
-    params.set("service", `in.(${named.map((value) => `"${encodeFilterValue(value)}"`).join(",")})`);
+    // Названия услуг содержат пробелы и тире, поэтому каждое берём в кавычки.
+    params.set("service", `in.(${named.map((value) => `"${value.replaceAll('"', "")}"`).join(",")})`);
   }
 
   // Поиск по имени, телефону и тексту заявки: владелец мог набрать часть слова.
@@ -247,7 +253,10 @@ async function handleList(request, env, origin) {
   return json(200, {
     ok: true,
     leads,
-    statuses: STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] }))
+    statuses: STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] })),
+    // Источники отдаём сразу со списком: иначе фильтр остаётся без значений,
+    // пока не загрузится справочник.
+    sources: SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] }))
   }, origin);
 }
 
@@ -403,16 +412,6 @@ function splitList(value) {
 /** Оставляет только значения из разрешённого списка. */
 function pickList(value, allowed) {
   return splitList(value).filter((item) => allowed.includes(item));
-}
-
-/**
- * Кодирует значение для фильтра PostgREST.
- *
- * Пробел должен стать %20, а не «+»: знак «+» в значении фильтра база
- * воспринимает буквально, и поиск по названию услуги сломается.
- */
-function encodeFilterValue(value) {
-  return encodeURIComponent(String(value).replaceAll('"', "")).replaceAll("+", "%20");
 }
 
 // --- Supabase -----------------------------------------------------------

@@ -479,10 +479,13 @@ await test("фильтр по услуге и по «не выбрана»", asy
 
   supabaseCalls = [];
   await onRequest({ request: request("GET", { cookie, query: "?service=none" }), env: ENV });
-  assert.ok(
-    supabaseCalls.some((call) => call.url.includes("service=is.null")),
-    "«не выбрана» должна превращаться в проверку пустого значения"
+
+  // «Не выбрана» бывает двух видов: пусто в базе и строка от сайта.
+  const emptyQuery = readableUrl(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
   );
+  assert.match(emptyQuery, /service\.is\.null/, "должна быть проверка пустого значения");
+  assert.match(emptyQuery, /service\.eq\.Не выбрана/, "и строка, которой сайт помечает заявку");
 });
 
 await test("поиск по имени и телефону уходит в запрос", async () => {
