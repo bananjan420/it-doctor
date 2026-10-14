@@ -2398,7 +2398,6 @@
     // Владелец меняет услуги в админке, сайт берёт их отсюда. Пока ответ не
     // пришёл, на странице остаются карточки, вшитые в разметку: так посетитель
     // видит услуги даже при медленной связи.
-    const SERVICES_CACHE_MS = 5 * 60 * 1000;
 
     function serviceOptionLabel(service) {
       return service.price ? `${service.title} — ${service.price}` : service.title;
@@ -2467,20 +2466,9 @@
     }
 
     async function loadServices() {
-      // Услуги меняются редко: держим их в памяти браузера, чтобы не дёргать
-      // сервер при каждом открытии страницы.
-      try {
-        const cached = JSON.parse(localStorage.getItem("itd_services") || "null");
-
-        if (cached && cached.at && Date.now() - cached.at < SERVICES_CACHE_MS) {
-          renderServiceCards(cached.list);
-          renderServiceOptions(cached.list);
-          return;
-        }
-      } catch {
-        // Испорченный кэш просто игнорируем.
-      }
-
+      // Запрос лёгкий (несколько услуг), поэтому делаем его всегда: так правки
+      // из админки видны на сайте сразу. Память браузера используем только
+      // чтобы не перерисовывать список, если на сервере ничего не изменилось.
       try {
         const response = await fetch("/api/services/list");
         if (!response.ok) return;
@@ -2490,13 +2478,33 @@
 
         if (!payload.ok || list.length === 0) return;
 
-        renderServiceCards(list);
-        renderServiceOptions(list);
-
+        // Версия растёт при каждой правке в админке. Если она прежняя,
+        // список на сервере не менялся — берём сохранённую копию.
+        let cached = null;
         try {
-          localStorage.setItem("itd_services", JSON.stringify({ at: Date.now(), list }));
+          cached = JSON.parse(localStorage.getItem("itd_services") || "null");
         } catch {
-          // Если места нет, просто не кэшируем.
+          cached = null;
+        }
+
+        const fresh = cached
+          && Array.isArray(cached.list)
+          && Number(cached.version) === Number(payload.version);
+
+        const services = fresh ? cached.list : list;
+
+        renderServiceCards(services);
+        renderServiceOptions(services);
+
+        if (!fresh) {
+          try {
+            localStorage.setItem("itd_services", JSON.stringify({
+              version: payload.version,
+              list
+            }));
+          } catch {
+            // Если места нет, просто не запоминаем.
+          }
         }
       } catch {
         // Сеть недоступна: остаются карточки из разметки.

@@ -2,12 +2,20 @@
 //
 // Отдаёт только включённые услуги, в порядке, заданном в админке.
 // Секретный ключ остаётся на сервере: браузер его не видит.
+//
+// Кэш устроен так, чтобы правки из админки появлялись сразу:
+//   * номер версии растёт при каждом изменении услуг (его пишет админский API);
+//   * страница запоминает список вместе с версией и при следующем открытии
+//     сначала спрашивает версию — если она та же, список берётся из памяти.
 
 import { json, supabaseAdmin } from "../_lib/auth.js";
 
-// Небольшой кэш на стороне Cloudflare: список меняется редко, а страница
-// запрашивает его при каждом открытии.
-const CACHE_SECONDS = 60;
+// Кэш умышленно отключён: правка в админке должна быть видна на сайте сразу.
+// Запрос лёгкий — несколько строк из таблицы услуг. Браузер дополнительно
+// сверяет версию списка, поэтому лишней перерисовки не происходит.
+
+// Ключ версии в хранилище Cloudflare: общий с админским API.
+const VERSION_KEY = "services_version";
 
 export async function onRequest({ request, env }) {
   const origin = new URL(request.url).origin;
@@ -38,9 +46,11 @@ export async function onRequest({ request, env }) {
     }
 
     const rows = await response.json();
+    const version = await readVersion(env);
 
     return json(200, {
       ok: true,
+      version,
       services: rows.map((row) => ({
         id: row.id,
         title: row.title,
@@ -53,11 +63,34 @@ export async function onRequest({ request, env }) {
       }))
     }, origin, {
       ...cors(),
-      "Cache-Control": `public, max-age=${CACHE_SECONDS}, stale-while-revalidate=300`
+      // Ни браузер, ни промежуточный кэш не должны отдавать старый список.
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"
     });
   } catch (error) {
     console.error("Public services crashed", { reason: error?.name || "unknown" });
     return json(500, { ok: false, error: "Внутренняя ошибка" }, origin, cors());
+  }
+}
+
+/**
+ * Номер версии списка услуг.
+ *
+ * Храним в KV. Если хранилище недоступно или ключа нет, отдаём 0 —
+ * страница в этом случае просто обновит список.
+ */
+async function readVersion(env) {
+  const store = env?.SERVICES_CACHE;
+
+  if (!store?.get) {
+    return 0;
+  }
+
+  try {
+    const stored = await store.get(VERSION_KEY);
+    const value = Number(stored);
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
   }
 }
 

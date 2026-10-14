@@ -33,6 +33,11 @@ const MAX_IMAGE = 700000;
 // Адрес картинки на сайте тоже допустим — например, уже загруженный файл.
 const MAX_IMAGE_URL = 500;
 
+// Ключ версии списка услуг. Тот же ключ читает публичный API сайта:
+// пока версия не изменилась, браузер берёт список из своей памяти.
+const VERSION_KEY = "services_version";
+const VERSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+
 export async function onRequest({ request, env }) {
   const url = new URL(request.url);
   const origin = url.origin;
@@ -86,7 +91,11 @@ async function listServices(env, origin) {
   }
 
   const rows = await response.json();
-  return json(200, { ok: true, services: rows.map(publicService) }, origin);
+  return json(200, {
+    ok: true,
+    services: rows.map(publicService),
+    version: await readVersion(env)
+  }, origin);
 }
 
 // --- Изменение ------------------------------------------------------------
@@ -125,6 +134,8 @@ async function createService(request, env, origin) {
   }
 
   const created = await response.json();
+  await bumpVersion(env);
+
   return json(200, { ok: true, service: publicService(Array.isArray(created) ? created[0] : created) }, origin);
 }
 
@@ -170,6 +181,8 @@ async function updateService(request, env, origin) {
     return json(404, { ok: false, error: "Услуга не найдена" }, origin);
   }
 
+  await bumpVersion(env);
+
   return json(200, { ok: true, service: publicService(updated[0]) }, origin);
 }
 
@@ -198,6 +211,8 @@ async function deleteService(url, env, origin) {
   if (!Array.isArray(removed) || removed.length === 0) {
     return json(404, { ok: false, error: "Услуга не найдена" }, origin);
   }
+
+  await bumpVersion(env);
 
   return json(200, { ok: true }, origin);
 }
@@ -271,6 +286,46 @@ function applyFields(row, payload, { requireTitle }) {
   }
 
   return null;
+}
+
+/**
+ * Поднимает версию списка услуг: сайт по ней понимает, что данные устарели.
+ *
+ * Заодно стираем кэш публичного ответа, иначе Cloudflare отдал бы старый
+ * список ещё минуту. Сбой хранилища не должен ломать сохранение услуги:
+ * в худшем случае сайт обновится с небольшой задержкой.
+ */
+async function bumpVersion(env) {
+  const store = env?.SERVICES_CACHE;
+
+  if (!store?.get || !store?.put) {
+    return;
+  }
+
+  try {
+    const current = Number(await store.get(VERSION_KEY));
+    const next = (Number.isFinite(current) ? current : 0) + 1;
+
+    await store.put(VERSION_KEY, String(next), { expirationTtl: VERSION_TTL_SECONDS });
+  } catch (error) {
+    console.error("Services version bump failed", { reason: error?.name || "unknown" });
+  }
+}
+
+/** Текущая версия списка услуг. */
+async function readVersion(env) {
+  const store = env?.SERVICES_CACHE;
+
+  if (!store?.get) {
+    return 0;
+  }
+
+  try {
+    const value = Number(await store.get(VERSION_KEY));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /** Следующий порядковый номер: новая услуга встаёт в конец списка. */
