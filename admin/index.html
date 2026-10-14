@@ -132,6 +132,36 @@
     }
 
     header.top h1 { font-size: 26px; margin: 0; font-weight: 800; }
+
+    /* Название сервиса — ссылка на сайт */
+    .brand-link {
+      text-decoration: none;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      transition: filter var(--transition);
+    }
+
+    .brand-link:hover { filter: brightness(1.25); }
+
+    /* Круглая кнопка обновления, как в личном кабинете */
+    .icon-btn {
+      width: 44px; height: 44px; padding: 0;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-secondary);
+    }
+
+    .icon-btn:hover { color: var(--accent); }
+    .icon-btn svg { width: 20px; height: 20px; display: block; }
+    .icon-btn[data-loading="true"] { color: var(--accent); }
+    .icon-btn[data-loading="true"] svg { animation: spin 0.9s linear infinite; }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
     header.top h1 span {
       background: var(--accent-gradient);
       -webkit-background-clip: text; background-clip: text;
@@ -420,11 +450,16 @@
 <section id="panel" hidden>
   <header class="top">
     <div>
-      <h1>Заявки <span>IT Doctor</span></h1>
+      <h1>Заявки <a class="brand-link" href="/" title="Перейти на сайт">IT Doctor</a></h1>
       <div class="sub" id="updated">—</div>
     </div>
     <div class="actions">
-      <button id="refreshBtn">Обновить</button>
+      <button class="icon-btn" id="refreshBtn" title="Обновить список" aria-label="Обновить список">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12a9 9 0 1 1-3.2-6.9" />
+          <path d="M21 4v5h-5" />
+        </svg>
+      </button>
       <button id="logoutBtn">Выйти</button>
     </div>
   </header>
@@ -474,6 +509,7 @@
   const emptyBox = document.getElementById("empty");
   const statsBox = document.getElementById("stats");
   const updatedBox = document.getElementById("updated");
+  const refreshBtn = document.getElementById("refreshBtn");
 
   const fSearch = document.getElementById("fSearch");
   const fFrom = document.getElementById("fFrom");
@@ -799,26 +835,40 @@
   async function load() {
     renderSortIndicators();
     renderFilterMarks();
-    const { status, payload } = await api("GET", undefined, currentQuery());
 
-    if (status === 401) {
-      sessionStorage.removeItem("itd_admin_key");
-      showLogin();
-      loginError.textContent = "Сессия истекла, войдите заново";
-      return;
+    // Крутим стрелку, пока идёт загрузка: так видно, что нажатие сработало.
+    refreshBtn.dataset.loading = "true";
+
+    try {
+      const { status, payload } = await api("GET", undefined, currentQuery());
+
+      if (status === 401) {
+        sessionStorage.removeItem("itd_admin_key");
+        showLogin();
+        loginError.textContent = "Сессия истекла, войдите заново";
+        return;
+      }
+
+      if (!payload.ok) {
+        updatedBox.textContent = payload.error || "Ошибка загрузки";
+        return;
+      }
+
+      if (Array.isArray(payload.statuses) && payload.statuses.length) {
+        statuses = payload.statuses;
+      }
+
+      // Источники приходят вместе со списком: фильтр не остаётся пустым.
+      if (Array.isArray(payload.sources) && payload.sources.length) {
+        sourceOptions = payload.sources;
+      }
+
+      render(payload.leads || []);
+      await loadServices();
+    } finally {
+      // Даём анимации докрутиться, чтобы нажатие было заметно.
+      setTimeout(() => { refreshBtn.dataset.loading = "false"; }, 350);
     }
-
-    if (!payload.ok) {
-      updatedBox.textContent = payload.error || "Ошибка загрузки";
-      return;
-    }
-
-    if (Array.isArray(payload.statuses) && payload.statuses.length) {
-      statuses = payload.statuses;
-    }
-
-    render(payload.leads || []);
-    await loadServices();
   }
 
   async function loadServices() {
