@@ -1322,6 +1322,8 @@
       font-size: 0.9rem;
     }
 
+    .build { font-size: 11px; opacity: .55; }
+
     .footer__socials {
       display: flex;
       gap: 16px;
@@ -1899,7 +1901,10 @@
   <!-- ========== 9. Footer ========== -->
   <footer class="footer">
     <div class="container footer__inner">
-      <p class="footer__copy">&copy; 2026 IT Доктор. Все права защищены.</p>
+      <p class="footer__copy">
+        &copy; 2026 IT Доктор. Все права защищены.
+        <span class="build">· версия: <span id="buildStamp">—</span></span>
+      </p>
       <div class="footer__socials">
         <a href="https://t.me/" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
           <i class="fab fa-telegram-plane"></i>
@@ -2387,6 +2392,21 @@
         // а в шапке появится кнопка входа.
         window.location.reload();
       });
+    }
+
+    // Отметка версии страницы: по ней видно, свежая копия открыта или старая.
+    const buildStamp = document.getElementById("buildStamp");
+
+    if (buildStamp) {
+      try {
+        const stamp = new Date(document.lastModified);
+
+        buildStamp.textContent = Number.isNaN(stamp.getTime())
+          ? "неизвестно"
+          : new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(stamp);
+      } catch {
+        buildStamp.textContent = "неизвестно";
+      }
     }
 
     loadClientProfile();

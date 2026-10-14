@@ -62,6 +62,27 @@
 
     button:hover { border-color: var(--border-strong); background: var(--bg-card-hover); }
     button.primary { background: var(--accent-gradient); border: none; color: #04121A; font-weight: 700; box-shadow: var(--shadow-accent); }
+
+    /* Возврат на сайт из формы входа */
+    .back-to-site {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 15px;
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    .back-to-site span { color: var(--accent); font-weight: 700; }
+    .back-to-site:hover { border-color: var(--accent); color: var(--accent); }
     button.primary:hover { filter: brightness(1.08); }
     button:disabled { opacity: .6; cursor: default; }
 
@@ -311,6 +332,16 @@
       .greeting { font-size: 19px; }
       .card { padding: 20px; }
 
+      /* Шапка кабинета на телефоне: приветствие слева, аватар справа */
+      .head { gap: 12px; }
+      .head-left { flex-wrap: nowrap; width: 100%; gap: 12px; align-items: center; }
+      .greeting { order: 1; flex: 1 1 auto; min-width: 0; }
+      .avatar-box { order: 2; flex: none; margin-left: auto; }
+
+      /* Кнопки под шапкой, во всю ширину */
+      .head-actions { width: 100%; margin-left: 0; }
+      .head-actions .primary { flex: 1; }
+
       .stats {
         flex-wrap: nowrap;
         gap: 8px;
@@ -329,9 +360,10 @@
 
       /* Меню аватара компактнее: так оно помещается на узком экране */
       .avatar-menu { padding: 6px; }
-      .avatar-menu button { padding: 10px; font-size: 13.5px; white-space: normal; }
-      .avatar-menu .who { padding: 9px 10px 10px; }
-      .avatar-menu .who span { word-break: break-all; }
+      .avatar-menu button { padding: 9px 10px; font-size: 13px; white-space: normal; }
+      .avatar-menu .who { padding: 8px 10px 9px; }
+      .avatar-menu .who b { font-size: 14px; }
+      .avatar-menu .who span { font-size: 12px; word-break: break-all; }
     }
 
     /* Очень узкие экраны: подписи статистики мельче */
@@ -372,6 +404,10 @@
       </div>
 
       <button class="primary" type="submit" id="submitBtn" style="width:100%">Войти</button>
+      <a class="back-to-site" href="/">
+        <span>←</span>
+        Вернуться на сайт
+      </a>
     </form>
 
     <div class="notice" id="authNotice"></div>
@@ -815,11 +851,13 @@
     const gap = 8;
     const rect = avatarBtn.getBoundingClientRect();
 
-    // Ширина фиксированная (260px): меню не растягивается на весь экран.
+    // Ширина обычная (260px), но не шире экрана: на телефоне меню
+    // ужимается, чтобы не растягиваться на всю ширину.
     // Ставим со словом important, чтобы старые стили из кэша браузера
     // не могли растянуть меню или сдвинуть его влево.
     const roomOnLeft = rect.right - margin;
-    const width = Math.min(260, roomOnLeft);
+    const maxByScreen = window.innerWidth - margin * 2;
+    const width = Math.max(200, Math.min(260, roomOnLeft, maxByScreen));
     avatarMenu.style.setProperty("width", `${width}px`, "important");
 
     const right = Math.min(rect.right, window.innerWidth - margin);
