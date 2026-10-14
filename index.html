@@ -915,6 +915,19 @@
       box-shadow: var(--shadow);
     }
 
+    .form-note {
+      grid-column: 1 / -1;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      border-radius: var(--radius-sm);
+      background: rgba(0, 212, 255, .08);
+      border: 1px solid rgba(0, 212, 255, .25);
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .form-note[hidden] { display: none; }
+
     .form-group {
       margin-bottom: 20px;
     }
@@ -1553,11 +1566,15 @@
       </div>
       <div class="lead__form-wrap fade-in">
         <form class="lead__form" id="leadForm" novalidate>
-          <div class="form-group">
+          <p class="form-note" id="clientNote" hidden>
+            Заявка уйдёт от вашего имени — данные уже есть в профиле.
+          </p>
+
+          <div class="form-group" id="nameField">
             <label for="name">Имя</label>
-            <input type="text" id="name" name="name" placeholder="Как к вам обращаться?" required autocomplete="name" />
+            <input type="text" id="name" name="name" placeholder="Как к вам обращаться?" autocomplete="name" />
           </div>
-          <div class="form-group">
+          <div class="form-group" id="phoneField">
             <label for="phone">Телефон</label>
             <input
               type="tel"
@@ -1571,6 +1588,22 @@
               autocomplete="tel"
             />
           </div>
+          <div class="form-group">
+            <label for="service">Услуга</label>
+            <select id="service" name="service">
+              <option value="">Не выбрана</option>
+              <option value="🔍 Диагностика — 500 руб">🔍 Диагностика — 500 руб</option>
+              <option value="🧹 Чистка от пыли — 1500 руб">🧹 Чистка от пыли — 1500 руб</option>
+              <option value="🌡️ Замена термопасты — 1000 руб">🌡️ Замена термопасты — 1000 руб</option>
+              <option value="💿 Установка Windows или другого ПО — 3500 руб">💿 Установка Windows или другого ПО — 3500 руб</option>
+              <option value="📱 Замена экрана на телефоне — от 500 руб">📱 Замена экрана на телефоне — от 500 руб</option>
+              <option value="🔋 Замена аккумулятора — от 5000 руб">🔋 Замена аккумулятора — от 5000 руб</option>
+              <option value="💾 Восстановление данных с диска — от 2000 руб">💾 Восстановление данных с диска — от 2000 руб</option>
+              <option value="🖥️ Сборка и настройка ПК под ключ — от 6000 руб">🖥️ Сборка и настройка ПК под ключ — от 6000 руб</option>
+              <option value="✏️ Другое">✏️ Другое</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label for="message">Сообщение</label>
             <textarea id="message" name="message" placeholder="Опишите проблему с устройством"></textarea>
@@ -1741,21 +1774,36 @@
     leadForm.addEventListener("submit", async (event) => {
       event.preventDefault();
 
-      const name = leadForm.name.value.trim();
-      const phone = leadForm.phone.value.trim();
-      const phoneDigits = phone.replace(/\D/g, "");
       const message = leadForm.message.value.trim() || "Не указано";
+      const service = leadForm.service ? leadForm.service.value : "";
       const submitButton = leadForm.querySelector('button[type="submit"]');
 
-      if (!name) {
-        showFormStatus("Пожалуйста, заполните имя и телефон.", "error");
-        return;
-      }
+      // Если клиент вошёл, имя и телефон уже есть в профиле: спрашивать их
+      // заново не нужно, заявка уходит сразу.
+      const client = window.__clientProfile;
+      const isClient = Boolean(clientToken() && client);
 
-      if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
-        showFormStatus("Введите полный номер телефона в формате +7 (999) 123-45-67.", "error");
-        phoneInput.focus();
-        return;
+      let name = "";
+      let phone = "";
+
+      if (isClient) {
+        name = client.name || "";
+        phone = client.phone || "";
+      } else {
+        name = leadForm.name.value.trim();
+        phone = leadForm.phone.value.trim();
+        const phoneDigits = phone.replace(/\D/g, "");
+
+        if (!name) {
+          showFormStatus("Пожалуйста, заполните имя и телефон.", "error");
+          return;
+        }
+
+        if (phoneDigits.length !== 11 || !phoneDigits.startsWith("7")) {
+          showFormStatus("Введите полный номер телефона в формате +7 (999) 123-45-67.", "error");
+          phoneInput.focus();
+          return;
+        }
       }
 
       const originalButtonContent = submitButton.innerHTML;
@@ -1764,10 +1812,17 @@
       showFormStatus("", "");
 
       try {
-        const response = await fetch("/api/submit", {
+        // Заявка клиента идёт в кабинет: там она получает источник «Личный
+        // кабинет», привязку к аккаунту и уведомление в Telegram.
+        const url = isClient ? "/api/me/leads" : "/api/submit";
+        const headers = { "Content-Type": "application/json" };
+
+        if (isClient) headers.Authorization = `Bearer ${clientToken()}`;
+
+        const response = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, phone, message })
+          headers,
+          body: JSON.stringify({ name, phone, message, service })
         });
 
         const result = await response.json();
@@ -1777,7 +1832,9 @@
         }
 
         leadForm.reset();
-        phoneInput.value = "+7 ";
+
+        if (!isClient) phoneInput.value = "+7 ";
+
         showFormStatus(
           "Спасибо! Ваша заявка принята. Мы свяжемся с вами в ближайшее время.",
           "success"
@@ -1820,6 +1877,28 @@
     const userName = document.getElementById("userName");
     const navAccount = document.getElementById("navAccount");
 
+    /**
+     * Для вошедшего клиента убираем из формы имя и телефон: они уже есть
+     * в профиле. Остаются услуга и сообщение — заявка уходит сразу.
+     */
+    function simplifyLeadForm(profile) {
+      const nameField = document.getElementById("nameField");
+      const phoneField = document.getElementById("phoneField");
+      const note = document.getElementById("clientNote");
+
+      if (!nameField || !phoneField) return;
+
+      nameField.hidden = true;
+      phoneField.hidden = true;
+
+      if (note) {
+        note.hidden = false;
+        note.textContent = profile.name
+          ? `Заявка уйдёт от имени «${profile.name}», телефон уже есть в профиле — заполнять не нужно.`
+          : "Заявка уйдёт от вашего имени: данные уже есть в профиле.";
+      }
+    }
+
     function clientToken() {
       return localStorage.getItem(CLIENT_TOKEN_KEY) || "";
     }
@@ -1832,6 +1911,11 @@
     }
 
     function renderClient(profile) {
+      // Профиль храним: из него берём имя и телефон для заявки, чтобы
+      // клиент не вводил их повторно.
+      window.__clientProfile = profile;
+      simplifyLeadForm(profile);
+
       const label = clientInitials(profile.name, profile.email);
 
       userAvatar.innerHTML = profile.avatar

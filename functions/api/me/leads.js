@@ -8,6 +8,7 @@
 //   POST /api/me/leads  -> новая заявка от имени клиента
 
 import { getAuthUser, json, profileFrom, supabaseAdmin } from "../_lib/auth.js";
+import { notifyOwner } from "../_lib/telegram.js";
 
 const SOURCE_ACCOUNT = "account";
 const DEFAULT_STATUS = "new";
@@ -134,8 +135,20 @@ async function createLead(request, user, env) {
   }
 
   const created = await response.json();
+  const lead = Array.isArray(created) ? created[0] : created;
 
-  return json(200, { ok: true, lead: Array.isArray(created) ? created[0] : created });
+  // Заявку уже сохранили — теперь уведомляем владельца в Telegram.
+  // Если уведомление не уйдёт, заявка всё равно останется в базе.
+  await notifyOwner(env, {
+    name: lead.name,
+    phone: lead.phone,
+    service: lead.service || "Не выбрана",
+    message: lead.message || "Не указано",
+    sourceLabel: "Личный кабинет",
+    saved: true
+  });
+
+  return json(200, { ok: true, lead });
 }
 
 function cors() {
