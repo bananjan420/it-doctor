@@ -80,6 +80,9 @@
       box-shadow: var(--shadow);
     }
 
+    /* Окно фильтра выходит за границу карточки, поэтому обрезку отключаем */
+    .table-card { overflow: visible; }
+
     /* --- Вход --- */
     #login { max-width: 420px; margin: 12vh auto 0; text-align: center; }
 
@@ -160,15 +163,22 @@
     .stat span { color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 
     /* --- Таблица --- */
-    .table-card { padding: 0; }
-    .table-wrap { overflow-x: auto; }    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    /* Обёртке нельзя обрезать содержимое: иначе окно фильтра пропадает.
+       Вместо прокрутки таблица сама ужимается по ширине экрана. */
+    .table-card { padding: 0 0 8px; }
+    .table-wrap { overflow: visible; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: auto; }
 
     th, td {
       text-align: left;
-      padding: 14px 12px;
+      padding: 12px 10px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       vertical-align: top;
     }
+
+    /* Текст заявки переносится, чтобы таблица не расползалась */
+    td.msg { white-space: normal; overflow-wrap: anywhere; }
 
     /* Шапка намеренно лёгкая: только подписи и значки фильтров. */
     thead th {
@@ -202,12 +212,15 @@
 
     .filter-btn:hover { opacity: 1; color: var(--accent); background: rgba(0, 212, 255, .12); }
 
-    /* Активный фильтр видно всегда */
+    /* Активный фильтр видно всегда и он бирюзовый */
     .filter-btn[data-active="true"] {
       opacity: 1;
       color: var(--accent);
-      background: rgba(0, 212, 255, .14);
+      background: rgba(0, 212, 255, .18);
+      box-shadow: 0 0 10px rgba(0, 212, 255, .35);
     }
+
+    .filter-btn[data-active="true"] svg { stroke: var(--accent); }
 
     /* Точка-напоминание, что в столбце есть активный фильтр */
     .filter-btn[data-active="true"]::after {
@@ -220,11 +233,18 @@
       box-shadow: 0 0 6px rgba(0, 212, 255, .9);
     }
 
+    /* Ячейка заголовка — точка отсчёта для окна фильтра */
+    thead th { position: relative; }
+
     /* Окно фильтра столбца */
     .filter-pop {
-      position: fixed;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
       z-index: 60;
-      min-width: 250px;
+      width: max-content;
+      min-width: 240px;
+      max-width: 320px;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -236,6 +256,9 @@
     }
 
     .filter-pop[hidden] { display: none; }
+
+    /* Последние столбцы: окно прижимаем к правому краю, чтобы не уехало */
+    thead th:nth-last-child(-n+2) .filter-pop { left: auto; right: 0; }
 
     .filter-pop label { text-transform: none; letter-spacing: 0; font-size: 12px; }
 
@@ -353,6 +376,12 @@
     .muted { color: var(--text-muted); }
     .empty { padding: 44px; text-align: center; color: var(--text-muted); }
     .saved { color: #34D399; font-size: 12px; margin-left: 8px; }
+
+    /* На узких экранах возвращаем прокрутку таблицы: там окно фильтра
+       открывается редко, а разъехавшаяся таблица мешает всегда. */
+    @media (max-width: 900px) {
+      .table-wrap { overflow-x: auto; }
+    }
 
     @media (max-width: 760px) {
       body { padding: 20px 12px 56px; }
@@ -772,17 +801,12 @@
     closeAllPanels();
   }
 
-  /** Открывает окно фильтра прямо под значком столбца. */
-  function positionFilterPanel(panel, button) {
-    const rect = button.getBoundingClientRect();
-    const width = Math.max(panel.offsetWidth || 250, 250);
-    const left = Math.min(rect.left, window.innerWidth - width - 12);
-    const below = rect.bottom + 8;
-    const height = panel.offsetHeight || 220;
-    const openUp = below + height > window.innerHeight - 12;
-
-    panel.style.left = `${Math.max(12, left)}px`;
-    panel.style.top = openUp ? `${Math.max(12, rect.top - height - 8)}px` : `${below}px`;
+  /** Показывает окно фильтра: положение задаёт сам столбец через CSS. */
+  function showFilterPanel(panel) {
+    // Сбрасываем возможные старые значения от прежней версии.
+    panel.style.left = "";
+    panel.style.top = "";
+    panel.hidden = false;
   }
 
   // --- Загрузка -----------------------------------------------------------
@@ -977,10 +1001,7 @@
       const wasHidden = panel.hidden;
       closeFilterPanels();
 
-      if (wasHidden) {
-        panel.hidden = false;
-        positionFilterPanel(panel, filterToggle);
-      }
+      if (wasHidden) showFilterPanel(panel);
       return;
     }
 
@@ -1039,17 +1060,8 @@
     }
   });
 
-  // Открытое окно следует за своим значком при прокрутке и изменении размера.
-  function repositionOpenPanels() {
-    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
-      if (panel.hidden) return;
-      const button = document.querySelector(`[data-filter-toggle="${panel.dataset.filterPanel}"]`);
-      if (button) positionFilterPanel(panel, button);
-    });
-  }
-
-  window.addEventListener("resize", repositionOpenPanels);
-  document.addEventListener("scroll", repositionOpenPanels, true);
+  // Окно привязано к своему столбцу, поэтому при прокрутке пересчитывать
+  // ничего не нужно.
 
   // --- Период -------------------------------------------------------------
 
