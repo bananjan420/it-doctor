@@ -103,23 +103,32 @@
     .notice { padding: 16px; border-radius: var(--radius-sm); font-size: 14px; margin-top: 14px; display: none; }    .notice[data-kind="error"] { display: block; background: rgba(255,107,107,.12); color: var(--danger); border: 1px solid rgba(255,107,107,.3); }
     .notice[data-kind="ok"] { display: block; background: rgba(52,211,153,.12); color: var(--ok); border: 1px solid rgba(52,211,153,.3); }
 
-    /* Вход для владельца: спокойный, но заметный, если искать глазами. */
-    .owner-entry {
-      margin: 20px 0 0;
-      padding-top: 16px;
-      border-top: 1px solid rgba(255, 255, 255, .07);
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .owner-entry a {
+    /* Секретный вход владельца: тройное нажатие Shift.
+       Видимой ссылки нет — подсказка появляется только после срабатывания. */
+    .owner-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(12px);
+      z-index: 90;
+      padding: 13px 20px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow);
       color: var(--text-secondary);
-      text-decoration: none;
-      border-bottom: 1px dashed rgba(0, 212, 255, .4);
-      padding-bottom: 2px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s ease, transform .25s ease;
     }
 
-    .owner-entry a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+    .owner-toast[data-show="true"] {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .owner-toast b { color: var(--accent); }
 
     /* --- Шапка кабинета --- */
     .head {
@@ -321,11 +330,6 @@
     </form>
 
     <div class="notice" id="authNotice"></div>
-
-    <!-- Неприметный вход для владельца сервиса -->
-    <p class="owner-entry">
-      <a href="/admin/" rel="nofollow">Вход для владельца</a>
-    </p>
   </section>
 
   <!-- Кабинет -->
@@ -461,6 +465,9 @@
     </form>
   </div>
 </div>
+
+<!-- Подсказка секретного входа владельца -->
+<div class="owner-toast" id="ownerToast">Открываю админку…</div>
 
 <script>
   const TOKEN_KEY = "itd_client_token";
@@ -937,6 +944,48 @@
   });
 
   refreshBtn.addEventListener("click", () => openCabinet());
+
+  // --- Секретный вход владельца -------------------------------------------
+
+  // Три нажатия Shift подряд открывают админку. Специально не используем
+  // обычный клик: владелец часто входит в свой клиентский аккаунт, и
+  // выходить из него ради админки неудобно.
+  const OWNER_TAPS_NEEDED = 3;
+  const OWNER_TAP_WINDOW_MS = 900;
+
+  let ownerTaps = 0;
+  let ownerTapTimer = null;
+  let ownerToastTimer = null;
+
+  function showOwnerToast() {
+    const toast = document.getElementById("ownerToast");
+    toast.dataset.show = "true";
+
+    clearTimeout(ownerToastTimer);
+    ownerToastTimer = setTimeout(() => {
+      toast.dataset.show = "false";
+      window.location.href = "/admin/";
+    }, 650);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Shift") {
+      ownerTaps = 0;
+      return;
+    }
+
+    ownerTaps += 1;
+    clearTimeout(ownerTapTimer);
+
+    if (ownerTaps >= OWNER_TAPS_NEEDED) {
+      ownerTaps = 0;
+      showOwnerToast();
+      return;
+    }
+
+    // Считаем только быстрые нажатия подряд.
+    ownerTapTimer = setTimeout(() => { ownerTaps = 0; }, OWNER_TAP_WINDOW_MS);
+  });
 
   // --- Старт --------------------------------------------------------------
 
