@@ -727,6 +727,28 @@
       '<div class="panel-actions"><button type="button" data-multi-clear>Снять всё</button></div>';
   }
 
+  /** Что именно задано в фильтрах: нужно для подсветки значков. */
+  function activeFilters() {
+    const { from, to } = presetRange(filters.preset);
+
+    return {
+      date: Boolean(from || to || filters.preset),
+      search: Boolean(filters.q.trim()),
+      service: filters.service.length > 0,
+      source: filters.source.length > 0,
+      status: filters.status.length > 0
+    };
+  }
+
+  /** Подсвечивает значки тех столбцов, где включён фильтр. */
+  function renderFilterMarks() {
+    const active = activeFilters();
+
+    document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
+      button.dataset.active = active[button.dataset.filterToggle] ? "true" : "false";
+    });
+  }
+
   /** Открывает одно окно фильтра и закрывает остальные. */
   function openFilterPanel(name, button) {
     document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
@@ -776,6 +798,7 @@
 
   async function load() {
     renderSortIndicators();
+    renderFilterMarks();
     const { status, payload } = await api("GET", undefined, currentQuery());
 
     if (status === 401) {
@@ -824,14 +847,28 @@
   }
 
   function render(leads) {
-    // Время сборки страницы нужно, чтобы отличать свежую версию от старой
-    // из кэша браузера.
-    const built = new Date(document.lastModified);
+    // Время сборки страницы помогает отличить свежую версию от старой
+    // из кэша. Если браузер его не отдаёт, просто пропускаем эту часть:
+    // из-за неё рендер падать не должен.
+    let built = "";
+
+    try {
+      const stamp = new Date(document.lastModified);
+
+      if (!Number.isNaN(stamp.getTime())) {
+        built = " · сборка: " + new Intl.DateTimeFormat("ru-RU", {
+          dateStyle: "short",
+          timeStyle: "short"
+        }).format(stamp);
+      }
+    } catch {
+      built = "";
+    }
 
     updatedBox.textContent =
       `Обновлено: ${new Intl.DateTimeFormat("ru-RU", { timeStyle: "medium" }).format(new Date())}` +
       ` · найдено: ${leads.length}` +
-      ` · сборка: ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "short", timeStyle: "short" }).format(built)}`;
+      built;
 
     const counts = {};
     for (const lead of leads) counts[lead.status] = (counts[lead.status] || 0) + 1;
