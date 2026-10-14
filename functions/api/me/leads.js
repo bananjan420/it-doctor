@@ -7,7 +7,7 @@
 //   GET  /api/me/leads  -> свои заявки
 //   POST /api/me/leads  -> новая заявка от имени клиента
 
-import { getAuthUser, json, supabaseAdmin } from "../_lib/auth.js";
+import { getAuthUser, json, profileFrom, supabaseAdmin } from "../_lib/auth.js";
 
 const SOURCE_ACCOUNT = "account";
 const DEFAULT_STATUS = "new";
@@ -75,12 +75,11 @@ async function listLeads(user, env) {
   }
 
   const leads = await response.json();
-  const name = (user.user_metadata || {}).name || "";
 
   return json(200, {
     ok: true,
     leads,
-    user: { id: user.id, email: user.email, name }
+    profile: profileFrom(user)
   });
 }
 
@@ -94,18 +93,23 @@ async function createLead(request, user, env) {
     return json(400, { ok: false, error: "Ожидается JSON" });
   }
 
-  const name = String(payload.name || "").trim().slice(0, 100);
-  const phone = String(payload.phone || "").trim().slice(0, 50);
+  const profile = profileFrom(user);
   const service = String(payload.service || "").trim().slice(0, 500);
   const message = String(payload.message || "").trim().slice(0, 5000);
 
-  if (!name || !phone) {
-    return json(422, { ok: false, error: "Имя и телефон обязательны." });
+  // Имя и телефон в самой заявке не спрашиваем: они уже есть в профиле.
+  // Если клиент их ещё не заполнил — просим сначала открыть личные данные.
+  if (!profile.name || !profile.phone) {
+    return json(409, {
+      ok: false,
+      error: "Заполните личные данные: имя и телефон.",
+      needsProfile: true
+    });
   }
 
   const row = {
-    name,
-    phone,
+    name: profile.name,
+    phone: profile.phone,
     service: service || null,
     message: message || null,
     source: SOURCE_ACCOUNT,

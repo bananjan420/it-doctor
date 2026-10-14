@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { onRequest as register } from "../functions/api/auth/register.js";
 import { onRequest as login } from "../functions/api/auth/login.js";
 import { onRequest as accountLeads } from "../functions/api/me/leads.js";
+import { onRequest as profileApi } from "../functions/api/me/profile.js";
 
 const ENV = {
   SUPABASE_URL: "https://example.supabase.co",
@@ -59,7 +60,11 @@ globalThis.fetch = async (url, options = {}) => {
     }
 
     const id = `user-${users.size + 1}`;
-    users.set(body.email, { id, password: body.password, name: body.data?.name || "" });
+    users.set(body.email, {
+      id,
+      password: body.password,
+      meta: { name: body.data?.name || "", phone: "", avatar: "" }
+    });
 
     return new Response(JSON.stringify({
       access_token: `${TOKEN_PREFIX}${id}`,
@@ -78,7 +83,26 @@ globalThis.fetch = async (url, options = {}) => {
     return new Response(JSON.stringify({
       access_token: `${TOKEN_PREFIX}${record.id}`,
       expires_in: 3600,
-      user: { id: record.id, email: body.email, user_metadata: { name: record.name } }
+      user: { id: record.id, email: body.email, user_metadata: { ...record.meta } }
+    }), { status: 200 });
+  }
+
+  // Обновление профиля: имя, телефон, аватар. Проверяем раньше чтения,
+  // иначе PUT перехватит обработчик чтения.
+  if (target.includes("/auth/v1/user") && method === "PUT") {
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const id = token.replace(TOKEN_PREFIX, "");
+    const record = [...users.entries()].find(([, value]) => value.id === id);
+
+    if (!record) {
+      return new Response(JSON.stringify({ message: "invalid token" }), { status: 401 });
+    }
+
+    record[1].meta = { ...body.data };
+    return new Response(JSON.stringify({
+      id,
+      email: record[0],
+      user_metadata: { ...record[1].meta }
     }), { status: 200 });
   }
 
@@ -94,7 +118,7 @@ globalThis.fetch = async (url, options = {}) => {
     return new Response(JSON.stringify({
       id,
       email: record[0],
-      user_metadata: { name: record[1].name }
+      user_metadata: { ...record[1].meta }
     }), { status: 200 });
   }
 
@@ -148,6 +172,20 @@ function reset() {
   leads = [];
   leadQueries = [];
   signupDisabled = false;
+}
+
+/** Заполняет имя и телефон через боевую функцию профиля. */
+async function setProfile(token, { name, phone, avatar }) {
+  const response = await profileApi({
+    request: new Request("https://x/api/me/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ name, phone, avatar })
+    }),
+    env: ENV
+  });
+
+  return { status: response.status, payload: await response.json() };
 }
 
 /** Регистрирует пользователя через боевую функцию и возвращает токен. */
@@ -277,12 +315,16 @@ await test("пользователь видит только свои заявк
   const first = await registerUser("one@example.com", "secret123", "Первый");
   const second = await registerUser("two@example.com", "secret123", "Второй");
 
+  // Имя и телефон живут в профиле, из него же попадают в заявку.
+  await setProfile(first.token, { name: "Первый", phone: "+7 (900) 111-11-11" });
+  await setProfile(second.token, { name: "Второй", phone: "+7 (900) 222-22-22" });
+
   // Каждый оставляет по заявке через боевую функцию.
   await accountLeads({
     request: new Request("https://x/api/me/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...withToken(first.token) },
-      body: JSON.stringify({ name: "Первый", phone: "+7 (900) 111-11-11", service: "Диагностика" })
+      body: JSON.stringify({ service: "Диагностика" })
     }),
     env: ENV
   });
@@ -291,7 +333,7 @@ await test("пользователь видит только свои заявк
     request: new Request("https://x/api/me/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...withToken(second.token) },
-      body: JSON.stringify({ name: "Второй", phone: "+7 (900) 222-22-22", service: "Чистка" })
+      body: JSON.stringify({ service: "Чистка" })
     }),
     env: ENV
   });
@@ -332,14 +374,14 @@ await test("фильтр по владельцу задаёт сервер, а �
 await test("попытка навязать чужой user_id игнорируется", async () => {
   reset();
   const { token } = await registerUser("hacker@example.com", "secret123");
+  await setProfile(token, { name: "Хакер", phone: "+7 (900) 000-00-00" });
 
   const response = await accountLeads({
     request: new Request("https://x/api/me/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...withToken(token) },
       body: JSON.stringify({
-        name: "Хакер",
-        phone: "+7 (900) 000-00-00",
+        service: "Диагностика",
         // Пытаемся подсунуть чужого владельца заявки.
         user_id: "user-999"
       })
@@ -357,12 +399,13 @@ await test("попытка навязать чужой user_id игнориру�
 await test("заявка из кабинета помечается источником account", async () => {
   reset();
   const { token } = await registerUser("source@example.com", "secret123");
+  await setProfile(token, { name: "Клиент", phone: "+7 (900) 333-33-33" });
 
   const response = await accountLeads({
     request: new Request("https://x/api/me/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...withToken(token) },
-      body: JSON.stringify({ name: "Клиент", phone: "+7 (900) 333-33-33" })
+      body: JSON.stringify({ service: "Диагностика" })
     }),
     env: ENV
   });
@@ -372,7 +415,7 @@ await test("заявка из кабинета помечается источн
   assert.equal(payload.lead.status, "new", "у новой заявки статус new");
 });
 
-await test("заявка без имени или телефона отклоняется", async () => {
+await test("без заполненного профиля заявка не создаётся", async () => {
   reset();
   const { token } = await registerUser("empty@example.com", "secret123");
 
@@ -380,12 +423,111 @@ await test("заявка без имени или телефона отклон�
     request: new Request("https://x/api/me/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...withToken(token) },
-      body: JSON.stringify({ name: "Без телефона" })
+      body: JSON.stringify({ service: "Диагностика" })
     }),
     env: ENV
   });
 
-  assert.equal(response.status, 422);
+  const payload = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(payload.needsProfile, true, "клиенту нужно предложить заполнить профиль");
+  assert.equal(leads.length, 0, "в базу ничего не должно попасть");
+});
+
+await test("имя и телефон берутся из профиля, а не из тела запроса", async () => {
+  reset();
+  const { token } = await registerUser("fromprofile@example.com", "secret123");
+  await setProfile(token, { name: "Иван Петров", phone: "+7 (900) 555-55-55" });
+
+  const response = await accountLeads({
+    request: new Request("https://x/api/me/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...withToken(token) },
+      body: JSON.stringify({
+        service: "Диагностика",
+        // Эти значения должны быть проигнорированы.
+        name: "Подмена",
+        phone: "+7 (900) 000-00-00"
+      })
+    }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(payload.lead.name, "Иван Петров");
+  assert.equal(payload.lead.phone, "+7 (900) 555-55-55");
+});
+
+// --- Профиль клиента ----------------------------------------------------
+
+await test("профиль сохраняет имя и телефон", async () => {
+  reset();
+  const { token } = await registerUser("profile@example.com", "secret123");
+
+  const saved = await setProfile(token, { name: "Мария", phone: "8 999 123 45 67" });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.payload.profile.name, "Мария");
+  assert.equal(saved.payload.profile.phone, "+7 (999) 123-45-67", "телефон приводится к формату");
+});
+
+await test("профиль не даёт поставить некорректный телефон", async () => {
+  reset();
+  const { token } = await registerUser("badphone@example.com", "secret123");
+
+  const saved = await setProfile(token, { name: "Мария", phone: "12345" });
+  assert.equal(saved.status, 400);
+  assert.match(saved.payload.error, /корректный номер/);
+});
+
+await test("аватар сохраняется и его можно убрать", async () => {
+  reset();
+  const { token } = await registerUser("avatar@example.com", "secret123");
+
+  const withPhoto = await setProfile(token, {
+    name: "Мария",
+    phone: "+7 (900) 111-11-11",
+    avatar: "data:image/jpeg;base64,AAAA"
+  });
+  assert.equal(withPhoto.payload.profile.avatar, "data:image/jpeg;base64,AAAA");
+
+  const withoutPhoto = await setProfile(token, { avatar: "" });
+  assert.equal(withoutPhoto.payload.profile.avatar, "");
+});
+
+await test("вместо картинки аватар не принимается", async () => {
+  reset();
+  const { token } = await registerUser("badavatar@example.com", "secret123");
+
+  const saved = await setProfile(token, { avatar: "https://злой-сайт/картинка.png" });
+  assert.equal(saved.status, 400);
+  assert.match(saved.payload.error, /картинк/);
+});
+
+await test("почту через профиль поменять нельзя", async () => {
+  reset();
+  const { token } = await registerUser("keepmail@example.com", "secret123");
+
+  const saved = await setProfile(token, { name: "Мария", phone: "+7 (900) 222-22-22", email: "чужой@example.com" });
+  assert.equal(saved.payload.profile.email, "keepmail@example.com", "почта остаётся прежней");
+});
+
+await test("профиль отдаётся вместе со списком заявок", async () => {
+  reset();
+  const { token } = await registerUser("withprofile@example.com", "secret123");
+  await setProfile(token, { name: "Пётр", phone: "+7 (900) 777-77-77" });
+
+  const response = await accountLeads({ request: get(withToken(token)), env: ENV });
+  const payload = await response.json();
+
+  assert.equal(payload.profile.name, "Пётр");
+  assert.equal(payload.profile.phone, "+7 (900) 777-77-77");
+  assert.equal(payload.profile.email, "withprofile@example.com");
+});
+
+await test("профиль без входа недоступен", async () => {
+  reset();
+  const response = await profileApi({ request: get(), env: ENV });
+  assert.equal(response.status, 401);
 });
 
 await test("создать заявку без входа нельзя", async () => {

@@ -121,6 +121,52 @@ export function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizeEmail(value));
 }
 
+/**
+ * Достаёт профиль клиента из метаданных Supabase Auth.
+ *
+ * Имя, телефон и аватар живут в user_metadata. Почту здесь только читаем:
+ * это идентификатор входа, менять её клиент не может.
+ */
+export function profileFrom(user) {
+  const meta = user?.user_metadata || {};
+
+  return {
+    id: user?.id || "",
+    email: user?.email || "",
+    name: String(meta.name || "").trim(),
+    phone: String(meta.phone || "").trim(),
+    avatar: String(meta.avatar || "")
+  };
+}
+
+/** Проверяет российский номер и приводит его к виду +7 (999) 123-45-67. */
+export function normalizePhone(value) {
+  const raw = String(value || "").trim();
+
+  if (!/^[\d\s()+-]+$/.test(raw)) {
+    return null;
+  }
+
+  const plusCount = (raw.match(/\+/g) || []).length;
+  if (plusCount > 1 || (plusCount === 1 && !raw.startsWith("+"))) {
+    return null;
+  }
+
+  let digits = raw.replace(/\D/g, "");
+
+  if (digits.length === 10) {
+    digits = `7${digits}`;
+  } else if (digits.length === 11 && digits.startsWith("8")) {
+    digits = `7${digits.slice(1)}`;
+  }
+
+  if (digits.length !== 11 || !digits.startsWith("7") || !"3489".includes(digits[1])) {
+    return null;
+  }
+
+  return `+7 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
+}
+
 /** Единый ответ в формате JSON с запретом кэширования. */
 export function json(status, body) {
   return new Response(JSON.stringify(body), {
