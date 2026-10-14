@@ -5,7 +5,7 @@
 // Сеть не используется: запросы к Supabase подменяются заглушкой.
 
 import assert from "node:assert/strict";
-import { onRequest, STATUSES, verifySession } from "../functions/api/leads.js";
+import { onRequest, SOURCES, STATUSES, verifySession } from "../functions/api/leads.js";
 
 const ENV = {
   ADMIN_KEY: "adk-test-key",
@@ -576,6 +576,56 @@ await test("справочник услуг для фильтра отдаётс
   const payload = await response.json();
   assert.deepEqual(payload.services, ["Не выбрана", "Термопаста"], "услуги без повторов и пустых");
   assert.equal(payload.hasEmpty, true, "должно быть отмечено, что есть заявки без услуги");
+});
+
+await test("источник «Личный кабинет» доступен для фильтра", async () => {
+  // Раньше источник account не был в списке разрешённых, поэтому фильтр
+  // по нему молча игнорировался.
+  assert.ok(SOURCES.includes("account"), "account должен быть среди источников");
+
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({ request: request("GET", { cookie, query: "?source=account" }), env: ENV });
+
+  const query = readableUrl(
+    supabaseCalls.find((call) => call.url.includes("/rest/v1/leads"))?.url || ""
+  );
+  assert.match(query, /source=eq\.account/, "фильтр по личному кабинету должен уходить в базу");
+});
+
+await test("справочник источников отдаётся с подписями", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  const response = await onRequest({
+    request: request("GET", { cookie, query: "?facets=1" }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  const labels = Object.fromEntries(payload.sources.map((s) => [s.value, s.label]));
+
+  assert.equal(labels.account, "Личный кабинет");
+  assert.equal(labels.website, "Сайт");
+  assert.equal(payload.sources.length, 4, "четыре источника");
+});
+
+await test("справочник услуг сужается выбранным источником", async () => {
+  seedLeads();
+  const cookie = await login();
+  supabaseCalls = [];
+
+  await onRequest({
+    request: request("GET", { cookie, query: "?facets=1&source=mini_app" }),
+    env: ENV
+  });
+
+  const query = readableUrl(
+    supabaseCalls.find((call) => call.url.includes("select=service"))?.url || ""
+  );
+  assert.match(query, /source=eq\.mini_app/, "услуги должны фильтроваться по источнику");
 });
 
 await test("ошибка базы не ломает API", async () => {

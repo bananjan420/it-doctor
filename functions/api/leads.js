@@ -25,7 +25,15 @@ export const STATUS_LABELS = {
 };
 
 // Источники заявки. Совпадают с типом lead_source в базе.
-export const SOURCES = ["website", "mini_app", "telegram_bot"];
+// Источники заявки. «account» — заявки клиентов из личного кабинета.
+export const SOURCES = ["website", "mini_app", "telegram_bot", "account"];
+
+export const SOURCE_LABELS = {
+  website: "Сайт",
+  mini_app: "Mini App",
+  telegram_bot: "Telegram-бот",
+  account: "Личный кабинет"
+};
 
 // Поля, которые можно отдавать в браузер. Служебные (например updated_at) не нужны.
 const LEAD_COLUMNS = [
@@ -131,7 +139,7 @@ async function handleList(request, env, origin) {
 
   // Список услуг для выпадающего фильтра — отдельный запрос, без заявок.
   if (url.searchParams.get("facets") === "1") {
-    return await handleServices(env, origin);
+    return await handleServices(env, origin, url);
   }
 
   const status = url.searchParams.get("status");
@@ -298,17 +306,27 @@ async function handleStatusUpdate(request, env, origin) {
 // --- Справочник услуг для фильтра ---------------------------------------
 
 /**
- * Отдаёт список услуг, которые реально встречаются в заявках.
+ * Отдаёт справочники для фильтров: список услуг и источников.
  *
  * Берём из базы только колонку service, поэтому запрос лёгкий даже при
- * большом количестве заявок. Отдельно сообщаем, есть ли заявки без услуги.
+ * большом количестве заявок. Список услуг можно сузить выбранным источником:
+ * так в панели не предлагаются услуги, которых у этих заявок нет.
  */
-async function handleServices(env, origin) {
+async function handleServices(env, origin, requestUrl) {
   const params = new URLSearchParams({
     select: "service",
     order: "service.asc",
-    limit: "1000"
+    limit: "2000"
   });
+
+  // Источник для сужения списка услуг берём из тех же правил, что и в списке.
+  const limitedSources = pickList(requestUrl.searchParams.get("source"), SOURCES);
+
+  if (limitedSources.length === 1) {
+    params.set("source", `eq.${limitedSources[0]}`);
+  } else if (limitedSources.length > 1) {
+    params.set("source", `in.(${limitedSources.join(",")})`);
+  }
 
   const response = await supabase(env, `/rest/v1/leads?${params.toString()}`, {
     method: "GET"
@@ -342,7 +360,13 @@ async function handleServices(env, origin) {
 
   services.sort((a, b) => a.localeCompare(b, "ru"));
 
-  return json(200, { ok: true, services, hasEmpty }, origin);
+  return json(200, {
+    ok: true,
+    services,
+    hasEmpty,
+    // Источники отдаём с подписями: так панель не дублирует список у себя.
+    sources: SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] }))
+  }, origin);
 }
 
 // --- Проверка параметров ------------------------------------------------

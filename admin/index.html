@@ -170,12 +170,84 @@
       vertical-align: top;
     }
 
+    /* Шапка намеренно лёгкая: только подписи и значки фильтров. */
     thead th {
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
+      background: transparent;
+      border-bottom: 1px solid rgba(255, 255, 255, .07);
+      vertical-align: middle;
       padding: 12px;
+      white-space: nowrap;
     }
+
+    /* Заголовок столбца и значок фильтра в одну строку */
+    .th-top { display: flex; align-items: center; gap: 6px; }
+
+    /* Значок фильтра появляется при наведении на столбец */
+    .filter-btn {
+      all: unset;
+      position: relative;
+      cursor: pointer;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      opacity: 0;
+      transition: opacity var(--transition), color var(--transition), background var(--transition);
+    }
+
+    .filter-btn svg { width: 14px; height: 14px; display: block; }
+
+    th:hover .filter-btn,
+    .filter-btn:focus-visible { opacity: .75; }
+
+    .filter-btn:hover { opacity: 1; color: var(--accent); background: rgba(0, 212, 255, .12); }
+
+    /* Активный фильтр видно всегда */
+    .filter-btn[data-active="true"] {
+      opacity: 1;
+      color: var(--accent);
+      background: rgba(0, 212, 255, .14);
+    }
+
+    /* Точка-напоминание, что в столбце есть активный фильтр */
+    .filter-btn[data-active="true"]::after {
+      content: "";
+      position: absolute;
+      top: 2px; right: 2px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(0, 212, 255, .9);
+    }
+
+    /* Окно фильтра столбца */
+    .filter-pop {
+      position: fixed;
+      z-index: 60;
+      min-width: 250px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow);
+    }
+
+    .filter-pop[hidden] { display: none; }
+
+    .filter-pop label { text-transform: none; letter-spacing: 0; font-size: 12px; }
+
+    .pop-clear {
+      align-self: flex-start;
+      padding: 7px 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: transparent;
+    }
+
+    .pop-clear:hover { color: var(--accent); border-color: var(--border-strong); }
 
     tbody tr { transition: background var(--transition); }
     tbody tr:hover { background: var(--bg-card-hover); }
@@ -225,11 +297,11 @@
     .multi > button[data-filled="true"] { color: var(--accent); border-color: var(--border-strong); }
 
     .multi-panel {
-      /* Позиционируем окно вручную поверх страницы: иначе таблица его обрезает. */
-      position: fixed;
-      z-index: 60;
-      min-width: 230px;
-      max-height: 280px;
+      /* Внутри окна фильтра список раскрывается на месте. */
+      position: static;
+      margin-top: 8px;
+      min-width: 210px;
+      max-height: 260px;
       overflow-y: auto;
       background: var(--bg-card);
       border: 1px solid var(--border-strong);
@@ -322,70 +394,32 @@
       <table>
         <thead>
           <tr>
-            <th>
-              <button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button>
-              <div class="filter-cell">
-                <select id="fPreset" title="Период">
-                  <option value="">За всё время</option>
-                  <option value="today">Сегодня</option>
-                  <option value="yesterday">Вчера</option>
-                  <option value="week">Эта неделя</option>
-                  <option value="lastWeek">Прошлая неделя</option>
-                  <option value="month">Этот месяц</option>
-                  <option value="lastMonth">Прошлый месяц</option>
-                  <option value="7">Последние 7 дней</option>
-                  <option value="30">Последние 30 дней</option>
-                  <option value="custom">Свой промежуток</option>
-                </select>
-                <div class="date-range" id="customRange" hidden>
-                  <input type="date" id="fFrom" title="С даты" />
-                  <input type="date" id="fTo" title="По дату" />
-                </div>
-              </div>
-            </th>
-
-            <th>
-              <button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button>
-              <div class="filter-cell">
-                <input type="text" id="fSearch" placeholder="поиск по всем полям" />
-              </div>
-            </th>
-
-            <th>
-              <button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button>
-            </th>
-
-            <th>
-              <button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button>
-              <div class="filter-cell">
-                <div class="multi" data-multi="service">
-                  <button type="button" data-multi-toggle>Все услуги</button>
-                  <div class="multi-panel" data-multi-panel hidden></div>
-                </div>
-              </div>
-            </th>
-
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="date">Дата<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="date" aria-label="Фильтр: Дата" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="date" hidden><label for="fPreset">Период</label>
+<select id="fPreset">
+<option value="">За всё время</option>
+<option value="today">Сегодня</option>
+<option value="yesterday">Вчера</option>
+<option value="week">Эта неделя</option>
+<option value="lastWeek">Прошлая неделя</option>
+<option value="month">Этот месяц</option>
+<option value="lastMonth">Прошлый месяц</option>
+<option value="7">Последние 7 дней</option>
+<option value="30">Последние 30 дней</option>
+<option value="custom">Свой промежуток</option>
+</select>
+<div class="date-range" id="customRange" hidden>
+<input type="date" id="fFrom" title="С даты" />
+<input type="date" id="fTo" title="По дату" />
+</div>
+<button type="button" class="pop-clear" data-filter-clear="date">Сбросить</button></div></th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="name">Имя<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="search" aria-label="Фильтр: Имя" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="search" hidden><label for="fSearch">Поиск по всем полям</label>
+<input type="text" id="fSearch" placeholder="имя, телефон, текст" />
+<button type="button" class="pop-clear" data-filter-clear="search">Сбросить</button></div></th>
+            <th><button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button></th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="service" aria-label="Фильтр: Услуга" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="service" hidden><div class="multi" data-multi="service"><button type="button" data-multi-toggle>Все услуги</button><div class="multi-panel" data-multi-panel hidden></div></div></div></th>
             <th>Сообщение</th>
-
-            <th>
-              <button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button>
-              <div class="filter-cell">
-                <div class="multi" data-multi="source">
-                  <button type="button" data-multi-toggle>Все источники</button>
-                  <div class="multi-panel" data-multi-panel hidden></div>
-                </div>
-              </div>
-            </th>
-
-            <th>
-              <button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button>
-              <div class="filter-cell">
-                <div class="multi" data-multi="status">
-                  <button type="button" data-multi-toggle>Все статусы</button>
-                  <div class="multi-panel" data-multi-panel hidden></div>
-                </div>
-              </div>
-            </th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="source" aria-label="Фильтр: Источник" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="source" hidden><div class="multi" data-multi="source"><button type="button" data-multi-toggle>Все источники</button><div class="multi-panel" data-multi-panel hidden></div></div></div></th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="status" aria-label="Фильтр: Статус" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="status" hidden><div class="multi" data-multi="status"><button type="button" data-multi-toggle>Все статусы</button><div class="multi-panel" data-multi-panel hidden></div></div></div></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -623,9 +657,12 @@
 
   // --- Выпадающие списки с галочками --------------------------------------
 
+  // Источники по умолчанию; сервер может прислать более полный список.
+  let sourceOptions = Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }));
+
   const MULTI_OPTIONS = {
     status: () => statuses.map((s) => ({ value: s.value, label: s.label })),
-    source: () => Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
+    source: () => sourceOptions,
     service: () => {
       const options = services.map((value) => ({ value, label: value }));
       if (hasEmptyService) options.unshift({ value: "none", label: "(не выбрана)" });
@@ -706,6 +743,56 @@
     document.querySelectorAll("[data-multi-panel]").forEach((panel) => { panel.hidden = true; });
   }
 
+  // --- Значки фильтров ----------------------------------------------------
+
+  /** Что именно задано в фильтрах: нужно для значков и счётчика. */
+  function activeFilters() {
+    const { from, to } = periodRange();
+
+    return {
+      date: Boolean(from || to || filters.preset),
+      search: Boolean(filters.q.trim()),
+      service: filters.service.length > 0,
+      source: filters.source.length > 0,
+      status: filters.status.length > 0
+    };
+  }
+
+  /** Показывает точку у значков, в которых есть активный фильтр. */
+  function renderFilterMarks() {
+    const active = activeFilters();
+
+    document.querySelectorAll("[data-filter-toggle]").forEach((button) => {
+      button.dataset.active = active[button.dataset.filterToggle] ? "true" : "false";
+    });
+
+    // В подписи столбца тоже полезно видеть, что фильтр включён.
+    const count = Object.values(active).filter(Boolean).length;
+    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
+      panel.dataset.active = active[panel.dataset.filterPanel] ? "true" : "false";
+    });
+
+    return count;
+  }
+
+  function closeFilterPanels() {
+    document.querySelectorAll("[data-filter-panel]").forEach((panel) => { panel.hidden = true; });
+    closeAllPanels();
+  }
+
+  /** Открывает окно фильтра прямо под значком столбца. */
+  function positionFilterPanel(panel, button) {
+    const rect = button.getBoundingClientRect();
+    const width = Math.max(panel.offsetWidth || 250, 250);
+    const left = Math.min(rect.left, window.innerWidth - width - 12);
+    const below = rect.bottom + 8;
+    const height = panel.offsetHeight || 220;
+    const openUp = below + height > window.innerHeight - 12;
+
+    panel.style.left = `${Math.max(12, left)}px`;
+    panel.style.top = openUp ? `${Math.max(12, rect.top - height - 8)}px` : `${below}px`;
+  }
+
   // --- Загрузка -----------------------------------------------------------
 
   async function load() {
@@ -733,11 +820,22 @@
   }
 
   async function loadServices() {
-    const { status, payload } = await api("GET", undefined, "?facets=1");
+    // Передаём выбранный источник: в списке услуг оставляем только те,
+    // которые встречаются у заявок этого источника.
+    const query = filters.source.length
+      ? `?facets=1&source=${encodeURIComponent(filters.source.join(","))}`
+      : "?facets=1";
+
+    const { status, payload } = await api("GET", undefined, query);
 
     if (status === 200 && payload.ok) {
       services = payload.services || [];
       hasEmptyService = Boolean(payload.hasEmpty);
+
+      // Источники приходят с подписями: новый источник не потеряется.
+      if (Array.isArray(payload.sources) && payload.sources.length) {
+        sourceOptions = payload.sources;
+      }
     } else {
       services = [];
       hasEmptyService = false;
@@ -874,29 +972,66 @@
     load();
   });
 
-  // Открытие и закрытие списков с галочками.
+  // Клики: значки фильтров, галочки в списках и очистка.
   document.addEventListener("click", (event) => {
-    const toggle = event.target.closest("[data-multi-toggle]");
-    const clear = event.target.closest("[data-multi-clear]");
+    const filterToggle = event.target.closest("[data-filter-toggle]");
+    const multiToggle = event.target.closest("[data-multi-toggle]");
+    const clearFilter = event.target.closest("[data-filter-clear]");
+    const clearMulti = event.target.closest("[data-multi-clear]");
     const checkbox = event.target.closest(".multi-panel input[type=checkbox]");
 
-    if (toggle) {
-      const panel = toggle.parentElement.querySelector("[data-multi-panel]");
+    if (filterToggle) {
+      event.stopPropagation();
+      const panel = document.querySelector(`[data-filter-panel="${filterToggle.dataset.filterToggle}"]`);
       const wasHidden = panel.hidden;
-      closeAllPanels();
+      closeFilterPanels();
 
-      if (!wasHidden) return;
-
-      panel.hidden = false;
-      positionPanel(panel, toggle);
+      if (wasHidden) {
+        panel.hidden = false;
+        positionFilterPanel(panel, filterToggle);
+      }
       return;
     }
 
-    if (clear) {
-      const name = clear.closest("[data-multi]").dataset.multi;
+    if (multiToggle) {
+      event.stopPropagation();
+      const panel = multiToggle.parentElement.querySelector("[data-multi-panel]");
+      panel.hidden = !panel.hidden;
+      return;
+    }
+
+    if (clearFilter) {
+      const name = clearFilter.dataset.filterClear;
+
+      if (name === "date") {
+        filters.preset = "";
+        filters.from = "";
+        filters.to = "";
+        fPreset.value = "";
+        fFrom.value = "";
+        fTo.value = "";
+        customRange.hidden = true;
+      } else if (name === "search") {
+        filters.q = "";
+        fSearch.value = "";
+      } else {
+        // Статус, источник или услуга: снимаем все галочки.
+        filters[name] = [];
+        renderMulti(name);
+      }
+
+      saveFilters();
+      renderFilterMarks();
+      load();
+      return;
+    }
+
+    if (clearMulti) {
+      const name = clearMulti.closest("[data-multi]").dataset.multi;
       filters[name] = [];
       saveFilters();
       renderMulti(name);
+      renderFilterMarks();
       load();
       return;
     }
@@ -909,21 +1044,23 @@
       filters[name] = [...set];
       saveFilters();
       renderMulti(name);
+      renderFilterMarks();
       load();
       return;
     }
 
-    if (!event.target.closest(".multi") && !event.target.closest(".multi-panel")) {
-      closeAllPanels();
+    // Клик мимо окон закрывает их.
+    if (!event.target.closest(".filter-pop") && !event.target.closest(".multi-panel")) {
+      closeFilterPanels();
     }
   });
 
-  // Открытое окно следует за своей кнопкой при прокрутке и изменении размера.
+  // Открытое окно следует за своим значком при прокрутке и изменении размера.
   function repositionOpenPanels() {
-    document.querySelectorAll("[data-multi-panel]").forEach((panel) => {
+    document.querySelectorAll("[data-filter-panel]").forEach((panel) => {
       if (panel.hidden) return;
-      const toggle = panel.parentElement.querySelector("[data-multi-toggle]");
-      if (toggle) positionPanel(panel, toggle);
+      const button = document.querySelector(`[data-filter-toggle="${panel.dataset.filterPanel}"]`);
+      if (button) positionFilterPanel(panel, button);
     });
   }
 
