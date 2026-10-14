@@ -1140,6 +1140,44 @@
     ownerTapTimer = setTimeout(() => { ownerTaps = 0; }, OWNER_TAP_WINDOW_MS);
   });
 
+  // --- Услуги из базы -----------------------------------------------------
+  // Список услуг ведёт владелец в админке, поэтому в кабинете он тоже
+  // подтягивается с сервера. Пока ответ не пришёл, работают варианты
+  // из разметки.
+
+  async function loadServiceOptions() {
+    const select = $("leadService");
+    if (!select) return;
+
+    try {
+      const response = await fetch("/api/services/list");
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      const list = Array.isArray(payload.services) ? payload.services : [];
+      if (!payload.ok || list.length === 0) return;
+
+      const current = select.value;
+
+      select.innerHTML =
+        '<option value="">Не выбрана</option>' +
+        list.map((service) => {
+          const label = service.price ? `${service.title} — ${service.price}` : service.title;
+          const safe = label.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+          return `<option value="${safe}">${safe}</option>`;
+        }).join("") +
+        '<option value="✏️ Другое">✏️ Другое</option>';
+
+      if ([...select.options].some((option) => option.value === current)) {
+        select.value = current;
+      }
+    } catch {
+      // Сеть недоступна: остаются варианты из разметки.
+    }
+  }
+
+  loadServiceOptions();
+
   // Отметка сборки страницы
   const buildStamp = $("buildStamp");
 

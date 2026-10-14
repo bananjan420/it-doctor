@@ -314,6 +314,27 @@ async function handleStatusUpdate(request, env, origin) {
 
 // --- Справочник услуг для фильтра ---------------------------------------
 
+/** Список услуг из справочника: используется в фильтре админки. */
+async function servicesCatalog(env) {
+  const response = await supabase(
+    env,
+    "/rest/v1/services?select=title,price,is_active&order=sort_order.asc",
+    { method: "GET" }
+  );
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const rows = await response.json();
+
+  return rows.map((row) => ({
+    label: row.price ? `${row.title} — ${row.price}` : row.title,
+    active: row.is_active
+  }));
+}
+
+
 /**
  * Отдаёт справочники для фильтров: список услуг и источников.
  *
@@ -371,8 +392,11 @@ async function handleServices(env, origin, requestUrl) {
 
   return json(200, {
     ok: true,
+    // Список услуг для фильтра берём из справочника услуг: он показывает то,
+    // что сейчас на сайте, а не только то, что уже встречалось в заявках.
     services,
     hasEmpty,
+    catalog: await servicesCatalog(env),
     // Источники отдаём с подписями: так панель не дублирует список у себя.
     sources: SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] }))
   }, origin);

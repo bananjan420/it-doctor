@@ -1651,7 +1651,7 @@
         <h2>Наши <span class="accent">услуги</span></h2>
         <p>Понятные цены на ремонт компьютерной и мобильной техники без скрытых доплат</p>
       </div>
-      <div class="services__grid">
+      <div class="services__grid" id="servicesGrid">
         <article class="service-card fade-in">
           <img class="service-card__image" src="assets/services/service-diagnostics.webp" alt="Диагностика ноутбука профессиональным оборудованием" loading="lazy" />
           <div class="service-card__body">
@@ -2393,6 +2393,117 @@
         window.location.reload();
       });
     }
+
+    // ===== Услуги из базы =====
+    // Владелец меняет услуги в админке, сайт берёт их отсюда. Пока ответ не
+    // пришёл, на странице остаются карточки, вшитые в разметку: так посетитель
+    // видит услуги даже при медленной связи.
+    const SERVICES_CACHE_MS = 5 * 60 * 1000;
+
+    function serviceOptionLabel(service) {
+      return service.price ? `${service.title} — ${service.price}` : service.title;
+    }
+
+    function renderServiceCards(services) {
+      const grid = document.getElementById("servicesGrid");
+      if (!grid || services.length === 0) return;
+
+      grid.innerHTML = services.map((service) => {
+        const image = service.image
+          ? `<img class="service-card__image" src="${attrSafe(service.image)}" alt="${attrSafe(service.title)}" loading="lazy" />`
+          : "";
+
+        const icon = service.icon ? `<i class="${attrSafe(service.icon)}"></i>` : "";
+
+        return `
+          <article class="service-card fade-in">
+            ${image}
+            <div class="service-card__body">
+              ${icon ? `<div class="service-card__icon">${icon}</div>` : ""}
+              <h3>${escapeHtml(service.title)}</h3>
+              ${service.description ? `<p>${escapeHtml(service.description)}</p>` : ""}
+              ${service.price ? `<div class="service-card__price">${escapeHtml(service.price)}</div>` : ""}
+            </div>
+          </article>`;
+      }).join("");
+
+      // Карточки добавлены после загрузки страницы: показываем их без ожидания
+      // прокрутки, иначе они останутся невидимыми.
+      grid.querySelectorAll(".fade-in").forEach((card) => card.classList.add("visible"));
+    }
+
+    function renderServiceOptions(services) {
+      const select = document.getElementById("service");
+      if (!select || services.length === 0) return;
+
+      const current = select.value;
+
+      select.innerHTML =
+        '<option value="">Не выбрана</option>' +
+        services.map((service) =>
+          `<option value="${attrSafe(serviceOptionLabel(service))}">${escapeHtml(serviceOptionLabel(service))}</option>`
+        ).join("") +
+        '<option value="✏️ Другое">✏️ Другое</option>';
+
+      // Возвращаем прежний выбор, если такое значение ещё существует.
+      if ([...select.options].some((option) => option.value === current)) {
+        select.value = current;
+      }
+    }
+
+    function attrSafe(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    async function loadServices() {
+      // Услуги меняются редко: держим их в памяти браузера, чтобы не дёргать
+      // сервер при каждом открытии страницы.
+      try {
+        const cached = JSON.parse(localStorage.getItem("itd_services") || "null");
+
+        if (cached && cached.at && Date.now() - cached.at < SERVICES_CACHE_MS) {
+          renderServiceCards(cached.list);
+          renderServiceOptions(cached.list);
+          return;
+        }
+      } catch {
+        // Испорченный кэш просто игнорируем.
+      }
+
+      try {
+        const response = await fetch("/api/services/list");
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        const list = Array.isArray(payload.services) ? payload.services : [];
+
+        if (!payload.ok || list.length === 0) return;
+
+        renderServiceCards(list);
+        renderServiceOptions(list);
+
+        try {
+          localStorage.setItem("itd_services", JSON.stringify({ at: Date.now(), list }));
+        } catch {
+          // Если места нет, просто не кэшируем.
+        }
+      } catch {
+        // Сеть недоступна: остаются карточки из разметки.
+      }
+    }
+
+    loadServices();
 
     // Отметка версии страницы: по ней видно, свежая копия открыта или старая.
     const buildStamp = document.getElementById("buildStamp");

@@ -33,6 +33,13 @@ const db = [];
 let supabaseCalls = [];
 let failNext = false;
 
+// Справочник услуг: владелец ведёт его в админке.
+const servicesDb = [
+  { id: "s1", title: "Диагностика", price: "500 руб.", is_active: true, sort_order: 10 },
+  { id: "s2", title: "Чистка от пыли", price: "1 500 руб.", is_active: true, sort_order: 20 },
+  { id: "s3", title: "Скрытая услуга", price: "0 руб.", is_active: false, sort_order: 30 }
+];
+
 function seedLeads() {
   db.length = 0;
   db.push(
@@ -45,6 +52,24 @@ function seedLeads() {
 globalThis.fetch = async (url, options = {}) => {
   const target = String(url);
   supabaseCalls.push({ url: target, method: options.method, body: options.body && JSON.parse(options.body) });
+
+  // Справочник услуг для фильтра админки.
+  if (target.includes("/rest/v1/services")) {
+    if (failNext) {
+      failNext = false;
+      return new Response("boom", { status: 500 });
+    }
+
+    const rows = servicesDb.map((service) => ({
+      title: service.title,
+      price: service.price,
+      is_active: service.is_active,
+      sort_order: service.sort_order,
+      id: service.id
+    }));
+
+    return new Response(JSON.stringify(rows), { status: 200 });
+  }
 
   if (!target.includes("/rest/v1/leads")) {
     throw new Error(`неожиданный запрос: ${target}`);
@@ -564,6 +589,23 @@ await test("фильтры и сортировка работают вместе
   assert.match(decoded, /source=eq\.website/);
   assert.match(decoded, /order=name\.asc/);
   assert.match(decoded, /created_at=gte\.2026-10-01/);
+});
+
+await test("справочник услуг отдаётся для фильтра админки", async () => {
+  seedLeads();
+  const cookie = await login();
+
+  const response = await onRequest({
+    request: request("GET", { cookie, query: "?facets=1" }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  const labels = (payload.catalog || []).map((item) => item.label);
+
+  assert.equal(response.status, 200);
+  assert.ok(labels.includes("Диагностика — 500 руб."), "услуга из справочника должна быть в списке");
+  assert.ok(labels.some((label) => label.startsWith("Скрытая")), "выключенные услуги тоже видны в фильтре");
 });
 
 await test("справочник услуг для фильтра отдаётся отдельно", async () => {
