@@ -244,6 +244,155 @@
       display: none;
     }
 
+    /* --- Кнопка входа в шапке --- */
+    .login-btn {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .login-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: var(--shadow-accent);
+    }
+
+    .login-btn[hidden] { display: none !important; }
+
+    @media (min-width: 1024px) {
+      .login-btn:not([hidden]) { display: inline-flex; }
+    }
+
+    /* --- Окно входа --- */
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal[hidden] { display: none; }
+
+    .modal__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(3, 6, 12, .78);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal__card {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      padding: 26px;
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow);
+      animation: modal-in .22s ease;
+    }
+
+    @keyframes modal-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal__close {
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .modal__close:hover { color: var(--accent); background: var(--bg-card-hover); }
+
+    .modal__title { font-size: 24px; margin: 0 0 6px; }
+    .modal__sub { color: var(--text-muted); font-size: 14px; margin: 0 0 18px; }
+
+    .modal__tabs {
+      display: flex;
+      gap: 6px;
+      padding: 4px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .modal__tabs button {
+      flex: 1;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .modal__tabs button[data-active="true"] {
+      background: var(--accent-gradient);
+      color: #04121A;
+    }
+
+    .modal__field { margin-bottom: 14px; }
+    .modal__field[hidden] { display: none; }
+
+    .modal__field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .modal__field input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 15px;
+    }
+
+    .modal__field input:focus { outline: none; border-color: var(--accent); }
+
+    .modal__submit { width: 100%; margin-top: 6px; }
+    .modal__submit[disabled] { opacity: .6; cursor: default; }
+
+    .modal__status { margin: 12px 0 0; font-size: 14px; min-height: 20px; }
+    .modal__status[data-kind="error"] { color: #FF6B6B; }
+    .modal__status[data-kind="ok"] { color: var(--accent); }
+
+    .modal__hint { margin: 14px 0 0; text-align: center; font-size: 13px; }
+    .modal__hint a { color: var(--text-muted); text-decoration: none; }
+    .modal__hint a:hover { color: var(--accent); }
+
     /* --- Профиль клиента в шапке --- */
     .user-box {
       position: relative;
@@ -1278,6 +1427,12 @@
         <span>IT Доктор</span>
       </a>
 
+      <!-- Кнопка входа: видна, пока клиент не вошёл -->
+      <button type="button" class="login-btn" id="siteLoginBtn" hidden>
+        <i class="fas fa-right-to-bracket"></i>
+        <span>Войти</span>
+      </button>
+
       <!-- Если клиент вошёл, слева появляется его аватар с меню -->
       <div class="user-box" id="userBox" hidden>
         <button class="user-btn" id="userBtn" aria-label="Профиль">
@@ -1316,6 +1471,47 @@
   </header>
 
   <!-- Mobile menu -->
+  <!-- ========== Окно входа ========== -->
+  <div class="modal" id="loginModal" hidden>
+    <div class="modal__backdrop" data-close-login></div>
+
+    <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <button type="button" class="modal__close" data-close-login aria-label="Закрыть">
+        <i class="fas fa-xmark"></i>
+      </button>
+
+      <h2 class="modal__title" id="loginTitle">Вход</h2>
+      <p class="modal__sub" id="loginSub">Войдите, чтобы заявки уходили сразу, без имени и телефона.</p>
+
+      <div class="modal__tabs">
+        <button type="button" id="loginTab" data-active="true">Вход</button>
+        <button type="button" id="registerTab" data-active="false">Регистрация</button>
+      </div>
+
+      <form id="siteAuthForm" class="modal__form">
+        <div class="modal__field" id="siteNameField" hidden>
+          <label for="siteName">Как к вам обращаться</label>
+          <input id="siteName" type="text" maxlength="100" placeholder="Иван" autocomplete="name" />
+        </div>
+
+        <div class="modal__field">
+          <label for="siteEmail">Почта</label>
+          <input id="siteEmail" type="email" required placeholder="you@example.com" autocomplete="email" />
+        </div>
+
+        <div class="modal__field">
+          <label for="sitePassword">Пароль</label>
+          <input id="sitePassword" type="password" required minlength="6" placeholder="минимум 6 символов" autocomplete="current-password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary modal__submit" id="siteAuthSubmit">Войти</button>
+      </form>
+
+      <p class="modal__status" id="siteAuthStatus"></p>
+      <p class="modal__hint"><a href="/account/">Открыть личный кабинет</a></p>
+    </div>
+  </div>
+
   <div class="mobile-menu" id="mobileMenu">
     <a href="#services">Услуги</a>
     <a href="#about">О мастере</a>
@@ -1930,10 +2126,123 @@
       document.getElementById("userMenuEmail").textContent = profile.email || "";
 
       userBox.hidden = false;
+      if (siteLoginBtn) siteLoginBtn.hidden = true;
+    }
+
+    // --- Окно входа -------------------------------------------------------
+
+    const siteLoginBtn = document.getElementById("siteLoginBtn");
+    const loginModal = document.getElementById("loginModal");
+    const siteAuthForm = document.getElementById("siteAuthForm");
+    const siteAuthStatus = document.getElementById("siteAuthStatus");
+    const siteAuthSubmit = document.getElementById("siteAuthSubmit");
+    const siteNameField = document.getElementById("siteNameField");
+    const loginTab = document.getElementById("loginTab");
+    const registerTab = document.getElementById("registerTab");
+
+    let siteAuthMode = "login";
+
+    function setAuthMode(next) {
+      siteAuthMode = next;
+      const isLogin = next === "login";
+
+      loginTab.dataset.active = String(isLogin);
+      registerTab.dataset.active = String(!isLogin);
+      siteNameField.hidden = isLogin;
+      siteAuthSubmit.textContent = isLogin ? "Войти" : "Зарегистрироваться";
+      document.getElementById("loginTitle").textContent = isLogin ? "Вход" : "Регистрация";
+      document.getElementById("loginSub").textContent = isLogin
+        ? "Войдите, чтобы заявки уходили сразу, без имени и телефона."
+        : "Создайте профиль — заявки будут привязаны к вам.";
+
+      siteAuthStatus.textContent = "";
+      siteAuthStatus.removeAttribute("data-kind");
+    }
+
+    function openLoginModal() {
+      setAuthMode("login");
+      loginModal.hidden = false;
+      document.body.style.overflow = "hidden";
+      document.getElementById("siteEmail").focus();
+    }
+
+    function closeLoginModal() {
+      loginModal.hidden = true;
+      document.body.style.overflow = "";
+    }
+
+    if (siteLoginBtn) {
+      siteLoginBtn.addEventListener("click", openLoginModal);
+
+      loginTab.addEventListener("click", () => setAuthMode("login"));
+      registerTab.addEventListener("click", () => setAuthMode("register"));
+
+      loginModal.querySelectorAll("[data-close-login]").forEach((el) => {
+        el.addEventListener("click", closeLoginModal);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !loginModal.hidden) closeLoginModal();
+      });
+
+      siteAuthForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const email = document.getElementById("siteEmail").value.trim();
+        const password = document.getElementById("sitePassword").value;
+        const name = document.getElementById("siteName").value.trim();
+
+        siteAuthSubmit.disabled = true;
+        siteAuthStatus.textContent = "Проверяем…";
+        siteAuthStatus.removeAttribute("data-kind");
+
+        try {
+          const path = siteAuthMode === "login" ? "/api/auth/login" : "/api/auth/register";
+          const body = siteAuthMode === "login" ? { email, password } : { email, password, name };
+
+          const response = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+
+          const payload = await response.json().catch(() => ({}));
+
+          if (!response.ok || !payload.ok) {
+            siteAuthStatus.textContent = payload.error || "Не удалось выполнить вход.";
+            siteAuthStatus.dataset.kind = "error";
+            return;
+          }
+
+          if (payload.needsConfirmation) {
+            siteAuthStatus.textContent = payload.message || "Подтвердите почту и войдите.";
+            siteAuthStatus.dataset.kind = "ok";
+            return;
+          }
+
+          localStorage.setItem(CLIENT_TOKEN_KEY, payload.token);
+          sessionStorage.setItem("itd_client_seen", "1");
+
+          // Обновляем страницу: так форма сразу станет короткой, а в шапке
+          // появится профиль клиента.
+          siteAuthStatus.textContent = "Готово! Обновляем страницу…";
+          siteAuthStatus.dataset.kind = "ok";
+          window.location.reload();
+        } catch {
+          siteAuthStatus.textContent = "Сеть недоступна. Попробуйте ещё раз.";
+          siteAuthStatus.dataset.kind = "error";
+        } finally {
+          siteAuthSubmit.disabled = false;
+        }
+      });
     }
 
     async function loadClientProfile() {
-      if (!clientToken()) return;
+      // Пока не знаем, вошёл ли клиент, не показываем ни кнопку входа, ни профиль.
+      if (!clientToken()) {
+        if (siteLoginBtn) siteLoginBtn.hidden = false;
+        return;
+      }
 
       try {
         const response = await fetch("/api/me/leads", {
@@ -1980,8 +2289,13 @@
 
         localStorage.removeItem(CLIENT_TOKEN_KEY);
         sessionStorage.removeItem("itd_client_seen");
+        localStorage.removeItem("itd_client_profile");
         userBox.hidden = true;
         userMenu.hidden = true;
+
+        // Обновляем страницу: форма снова спросит имя и телефон,
+        // а в шапке появится кнопка входа.
+        window.location.reload();
       });
     }
 
