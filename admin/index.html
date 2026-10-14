@@ -296,19 +296,20 @@
 
     .multi > button[data-filled="true"] { color: var(--accent); border-color: var(--border-strong); }
 
+    /* Список значений живёт внутри окна фильтра: своих рамок и тени ему
+       не нужно, иначе получается «коробка в коробке». */
     .multi-panel {
-      /* Внутри окна фильтра список раскрывается на месте. */
       position: static;
-      margin-top: 8px;
-      min-width: 210px;
       max-height: 260px;
       overflow-y: auto;
-      background: var(--bg-card);
-      border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm);
-      box-shadow: var(--shadow);
-      padding: 8px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
     }
+
+    .multi-panel label:first-child { margin-top: 0; }
+    .multi-empty { color: var(--text-muted); font-size: 13px; margin: 4px 2px; }
 
     .multi-panel[hidden] { display: none; }
 
@@ -416,10 +417,10 @@
 <input type="text" id="fSearch" placeholder="имя, телефон, текст" />
 <button type="button" class="pop-clear" data-filter-clear="search">Сбросить</button></div></th>
             <th><button type="button" class="sort" data-sort="phone">Телефон<span class="arrow"></span></button></th>
-            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="service" aria-label="Фильтр: Услуга" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="service" hidden><div class="multi" data-multi="service"><button type="button" data-multi-toggle>Все услуги</button><div class="multi-panel" data-multi-panel hidden></div></div></div></th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="service">Услуга<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="service" aria-label="Фильтр: Услуга" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="service" hidden><div class="multi" data-multi="service"><div class="multi-panel" data-multi-panel></div></div></div></th>
             <th>Сообщение</th>
-            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="source" aria-label="Фильтр: Источник" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="source" hidden><div class="multi" data-multi="source"><button type="button" data-multi-toggle>Все источники</button><div class="multi-panel" data-multi-panel hidden></div></div></div></th>
-            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="status" aria-label="Фильтр: Статус" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="status" hidden><div class="multi" data-multi="status"><button type="button" data-multi-toggle>Все статусы</button><div class="multi-panel" data-multi-panel hidden></div></div></div></th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="source">Источник<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="source" aria-label="Фильтр: Источник" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="source" hidden><div class="multi" data-multi="source"><div class="multi-panel" data-multi-panel></div></div></div></th>
+            <th data-has-filter="true"><div class="th-top"><button type="button" class="sort" data-sort="status">Статус<span class="arrow"></span></button><button type="button" class="filter-btn" data-filter-toggle="status" aria-label="Фильтр: Статус" title="Фильтр"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div><div class="filter-pop" data-filter-panel="status" hidden><div class="multi" data-multi="status"><div class="multi-panel" data-multi-panel></div></div></div></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -670,47 +671,38 @@
     }
   };
 
-  const MULTI_PLACEHOLDERS = {
-    status: "Все статусы",
-    source: "Все источники",
-    service: "Все услуги"
-  };
 
+  /**
+   * Рисует список значений фильтра.
+   *
+   * Список всегда раскрыт: раньше окно показывало кнопку «Все источники»,
+   * и приходилось нажимать её второй раз, чтобы увидеть варианты.
+   */
   function renderMulti(name) {
     const box = document.querySelector(`[data-multi="${name}"]`);
     if (!box) return;
 
     const options = MULTI_OPTIONS[name]();
-    const selected = filters[name];
     const panel = box.querySelector("[data-multi-panel]");
-    const toggle = box.querySelector("[data-multi-toggle]");
 
     // Снятые с учёта значения убираем из фильтра.
-    const allowed = options.map((o) => o.value);
-    const before = selected.length;
-    filters[name] = selected.filter((value) => allowed.includes(value));
+    const allowed = options.map((option) => option.value);
+    const before = filters[name].length;
+    filters[name] = filters[name].filter((value) => allowed.includes(value));
     if (filters[name].length !== before) saveFilters();
 
+    if (options.length === 0) {
+      panel.innerHTML = '<p class="multi-empty">Нет доступных значений</p>';
+      return;
+    }
+
     panel.innerHTML =
-      options.map((o) => `
+      options.map((option) => `
         <label>
-          <input type="checkbox" value="${escapeHtml(o.value)}"${filters[name].includes(o.value) ? " checked" : ""} />
-          <span>${escapeHtml(o.label)}</span>
+          <input type="checkbox" value="${escapeHtml(option.value)}"${filters[name].includes(option.value) ? " checked" : ""} />
+          <span>${escapeHtml(option.label)}</span>
         </label>`).join("") +
       '<div class="panel-actions"><button type="button" data-multi-clear>Снять всё</button></div>';
-
-    // В свёрнутом виде показываем, сколько выбрано.
-    if (filters[name].length === 0) {
-      toggle.textContent = MULTI_PLACEHOLDERS[name];
-      toggle.dataset.filled = "false";
-    } else if (filters[name].length === 1) {
-      const only = options.find((o) => o.value === filters[name][0]);
-      toggle.textContent = only ? only.label : "1 выбрано";
-      toggle.dataset.filled = "true";
-    } else {
-      toggle.textContent = `Выбрано: ${filters[name].length}`;
-      toggle.dataset.filled = "true";
-    }
   }
 
   /**
@@ -975,7 +967,6 @@
   // Клики: значки фильтров, галочки в списках и очистка.
   document.addEventListener("click", (event) => {
     const filterToggle = event.target.closest("[data-filter-toggle]");
-    const multiToggle = event.target.closest("[data-multi-toggle]");
     const clearFilter = event.target.closest("[data-filter-clear]");
     const clearMulti = event.target.closest("[data-multi-clear]");
     const checkbox = event.target.closest(".multi-panel input[type=checkbox]");
@@ -990,13 +981,6 @@
         panel.hidden = false;
         positionFilterPanel(panel, filterToggle);
       }
-      return;
-    }
-
-    if (multiToggle) {
-      event.stopPropagation();
-      const panel = multiToggle.parentElement.querySelector("[data-multi-panel]");
-      panel.hidden = !panel.hidden;
       return;
     }
 
