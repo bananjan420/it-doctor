@@ -408,6 +408,17 @@
       align-items: center;
     }
 
+    /* Профиль клиента стоит справа, рядом с меню — на всех экранах.
+       Логотип уводим первым в порядке, поэтому профиль оказывается вправо. */
+    .logo { order: -2; }
+    .user-box { order: 0; margin-left: auto; }
+    .nav { order: 0; margin-left: 0; }
+    .header__cta { order: 1; }
+    .burger { order: 2; }
+
+    /* Кнопка входа занимает то же место справа, пока клиент не вошёл */
+    .login-btn { order: 0; margin-left: auto; }
+
     .user-btn {
       display: flex;
       align-items: center;
@@ -465,9 +476,10 @@
       top: 0;
       left: 0;
       z-index: 1002;
+      /* Ширина задана явно: меню не растягивается на всю ширину экрана */
+      width: 260px;
       min-width: 0;
       padding: 8px;
-      overflow-x: hidden;
       border-radius: 14px;
       background: var(--bg-card);
       border: 1px solid var(--border);
@@ -2302,9 +2314,10 @@
       const gap = 8;
       const anchor = userBtn.getBoundingClientRect();
 
-      // Ширина: до 280px, но не больше свободного места слева от аватара.
+      // Ширина фиксированная (260px): меню не растягивается на весь экран.
+      // Если места слева меньше, ужимаем его.
       const roomOnLeft = anchor.right - margin;
-      const width = Math.min(280, roomOnLeft);
+      const width = Math.min(260, roomOnLeft);
       userMenu.style.width = `${width}px`;
 
       // Правый край — по аватару, левый не выходит за экран.

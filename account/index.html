@@ -169,7 +169,7 @@
       /* Координаты считает скрипт: меню всегда раскрывается вправо от аватара
          и остаётся в пределах экрана. */
       position: fixed; top: 0; left: 0; z-index: 40;
-      min-width: 0; max-width: none;
+      width: 260px; min-width: 0; max-width: none;
       background: var(--bg-card);
       border: 1px solid var(--border-strong);
       border-radius: var(--radius-sm);
@@ -806,8 +806,9 @@
     const gap = 8;
     const rect = avatarBtn.getBoundingClientRect();
 
+    // Ширина фиксированная (260px): меню не растягивается на весь экран.
     const roomOnLeft = rect.right - margin;
-    const width = Math.min(280, roomOnLeft);
+    const width = Math.min(260, roomOnLeft);
     avatarMenu.style.width = `${width}px`;
 
     const right = Math.min(rect.right, window.innerWidth - margin);
