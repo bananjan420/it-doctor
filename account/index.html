@@ -291,6 +291,14 @@
     .pay-btn:hover { filter: brightness(1.08); }
     .pay-btn[disabled] { opacity: .6; cursor: default; }
 
+    .pay-error {
+      margin: 10px 0 0;
+      font-size: 13px;
+      color: #FF6B6B;
+    }
+
+    .pay-error[hidden] { display: none; }
+
     .badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .badge.new { background: rgba(0,212,255,.14); color: var(--accent); }
     .badge.in_progress { background: rgba(255,176,32,.16); color: #FFB020; }
@@ -926,7 +934,8 @@
       <div class="pay">
         <span class="pay-status">К оплате: <b>${formatAmount(known)}</b></span>
         <button type="button" class="pay-btn" data-pay="${escapeHtml(lead.id)}">Оплатить</button>
-      </div>`;
+      </div>
+      <p class="pay-error" data-pay-error="${escapeHtml(lead.id)}" hidden></p>`;
   }
 
   /** Сумма в рублях: 1000 -> «1 000 ₽». */
@@ -1253,18 +1262,24 @@
     try {
       const { status, payload } = await api("/api/me/pay", {
         method: "POST",
-        body: { leadId }
+        body: { leadId },
+        // Без этого сервер не знает, кто платит, и отвечает «нужно войти».
+        auth: true
       });
 
+      // Показываем понятную причину: код ответа помогает понять, что именно
+      // пошло не так, если текст от сервера пустой.
       if (status !== 200 || !payload.ok) {
-        notify(authNotice, payload.error || "Не удалось создать оплату.", "error");
+        console.error("Оплата не создана:", status, payload);
+        showPayError(leadId, payload.error || `Сервер ответил ${status}. Попробуйте позже.`);
         button.disabled = false;
         button.textContent = original;
         return;
       }
 
       if (!payload.paymentUrl) {
-        notify(authNotice, "ЮKassa не выдала ссылку на оплату.", "error");
+        console.error("ЮKassa не вернула ссылку на оплату:", payload);
+        showPayError(leadId, "ЮKassa не выдала ссылку на оплату. Попробуйте позже.");
         button.disabled = false;
         button.textContent = original;
         return;
@@ -1272,11 +1287,27 @@
 
       // Уходим на оплату: после неё ЮKassa вернёт клиента в кабинет.
       window.location.href = payload.paymentUrl;
-    } catch {
-      notify(authNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
+    } catch (error) {
+      console.error("Оплата не создана из-за сети:", error);
+      showPayError(leadId, "Сеть недоступна. Попробуйте ещё раз.");
       button.disabled = false;
       button.textContent = original;
     }
+  }
+
+  /** Показывает причину отказа прямо под кнопкой оплаты. */
+  function showPayError(leadId, message) {
+    const box = document.querySelector(`[data-pay-error="${leadId}"]`);
+
+    if (box) {
+      box.textContent = message;
+      box.hidden = false;
+      // Если текст с ошибкой не виден, подсказываем клиенту, что делать.
+      notify(authNotice, message, "error");
+      return;
+    }
+
+    notify(authNotice, message, "error");
   }
 
   leadsBox.addEventListener("click", (event) => {
@@ -1305,7 +1336,11 @@
       let changed = false;
 
       for (const lead of pending) {
-        const result = await api("/api/me/payments", { method: "POST", body: { leadId: lead.id } });
+        const result = await api("/api/me/payments", {
+          method: "POST",
+          body: { leadId: lead.id },
+          auth: true
+        });
 
         if (result.status === 200 && result.payload.changed) {
           changed = true;
