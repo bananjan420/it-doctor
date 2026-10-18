@@ -2540,7 +2540,42 @@
       }
     }
 
+    // ===== Возврат после подтверждения почты =====
+    // Supabase возвращает клиента с токеном прямо в адресе: #access_token=...
+    // Сохраняем токен и уводим в личный кабинет, чтобы клиент сразу увидел
+    // свой профиль, а не искал форму входа заново.
+    function consumeAuthHash() {
+      const hash = String(window.location.hash || "").replace(/^#/, "");
+      if (!hash) return false;
+
+      const params = new URLSearchParams(hash);
+      const token = params.get("access_token");
+      const type = params.get("type") || "";
+
+      if (!token) return false;
+
+      // Ссылку восстановления пароля так не обрабатываем: это отдельный сценарий.
+      if (type === "recovery") return false;
+
+      try {
+        localStorage.setItem(CLIENT_TOKEN_KEY, token);
+        sessionStorage.setItem("itd_client_seen", "1");
+      } catch {
+        return false;
+      }
+
+      // Токен не должен оставаться в адресе и истории браузера.
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      return true;
+    }
+
+    const justConfirmed = consumeAuthHash();
+
     loadClientProfile();
+
+    if (justConfirmed) {
+      window.location.replace("/account/?confirmed=1");
+    }
   </script>
 </body>
 </html>

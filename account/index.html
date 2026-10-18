@@ -1414,16 +1414,39 @@
 
   // --- Старт --------------------------------------------------------------
 
+  // Клиент мог прийти по ссылке подтверждения почты: Supabase кладёт токен
+  // в адрес. Сохраняем его, чтобы сразу открыть кабинет без повторного входа.
+  function consumeAuthHash() {
+    const hash = String(window.location.hash || "").replace(/^#/, "");
+    if (!hash) return false;
+
+    const params = new URLSearchParams(hash);
+    const token = params.get("access_token");
+    const type = params.get("type") || "";
+
+    if (!token) return false;
+    if (type === "recovery") return false;
+
+    setToken(token);
+    sessionStorage.setItem("itd_client_seen", "1");
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    return true;
+  }
+
+  const hashToken = consumeAuthHash();
+
   // Ссылки с параметрами: с сайта можно прийти сразу к нужному окну.
   const startParams = new URLSearchParams(window.location.search);
   const openProfileAtStart = startParams.get("profile") === "1";
   const openLeadAtStart = startParams.get("lead") === "1";
   // Возврат из ЮKassa: ?paid=1. Нужно перепроверить статус оплаты.
   const paidReturn = startParams.get("paid") === "1";
+  // Возврат после подтверждения почты: ?confirmed=1.
+  const confirmedReturn = startParams.get("confirmed") === "1";
 
   // Убираем параметры из адреса, чтобы при обновлении страницы окно не
   // открывалось снова.
-  if (openProfileAtStart || openLeadAtStart || paidReturn) {
+  if (openProfileAtStart || openLeadAtStart || paidReturn || confirmedReturn || hashToken) {
     history.replaceState(null, "", window.location.pathname);
   }
 
@@ -1464,6 +1487,11 @@
 
       // Вернулись с оплаты — уточняем статус у сервера.
       if (paidReturn) checkPaymentAfterReturn();
+
+      // Почта подтверждена: говорим об этом прямо и не заставляем искать вход.
+      if (confirmedReturn) {
+        notify(authNotice, "Почта подтверждена. Добро пожаловать в личный кабинет!", "ok");
+      }
     });
   } else {
     showAuth();
