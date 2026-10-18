@@ -24,7 +24,7 @@ const LEAD_COLUMNS = [
 ].join(",");
 
 // Поля услуги, по которым считается сумма.
-const SERVICE_COLUMNS = ["id", "title", "price", "price_value", "price_is_from", "is_active"].join(",");
+const SERVICE_COLUMNS = ["id", "title", "price_value", "is_active"].join(",");
 
 // Сколько живёт ключ идемпотентности. Внутри этого окна повторное нажатие
 // кнопки не создаёт второй платёж, а после — создаёт новый: так устаревшая
