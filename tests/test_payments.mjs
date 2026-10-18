@@ -21,6 +21,9 @@ let yookassaCalls = [];
 // Что вернёт ЮKassa на чтение платежа.
 let yookassaStatus = "pending";
 let yookassaAmount = null;
+// Созданные платежи по ключу идемпотентности: нужны для проверки повторов.
+const createdPayments = new Map();
+let serial = 0;
 // Пользователь, чей токен считаем действующим.
 let currentUser = null;
 
@@ -41,6 +44,8 @@ function reset({ leadList = [], serviceList = [], user = { id: "user-1" } } = {}
   yookassaCalls = [];
   yookassaStatus = "pending";
   yookassaAmount = null;
+  createdPayments.clear();
+  serial = 0;
   currentUser = user;
 }
 
@@ -109,15 +114,51 @@ globalThis.fetch = async (url, options = {}) => {
 
     yookassaCalls.push({ method, url: target, body: isCreate ? body : null });
 
-    const amount = isCreate ? String(body?.amount?.value || "0.00") : String(yookassaAmount ?? "1000.00");
-    const status = isCreate ? "pending" : yookassaStatus;
+    if (isCreate) {
+      // Повтор с тем же ключом идемпотентности возвращает тот же платёж,
+      // но ссылку ЮKassa выдаёт свежую — так она и работает на самом деле.
+      const key = String(body?.idempotencyKey || options.headers?.["Idempotence-Key"] || "");
+      const existing = createdPayments.get(key);
+
+      if (existing) {
+        const url = `https://yookassa.test/pay/${existing.serial}`;
+        return new Response(JSON.stringify({
+          id: existing.id,
+          status: "pending",
+          paid: false,
+          amount: { value: existing.amount, currency: "RUB" },
+          confirmation: { type: "redirect", confirmation_url: url },
+          captured_at: null
+        }), { status: 200 });
+      }
+
+      serial += 1;
+      const payment = {
+        id: `pay-test-${serial}`,
+        amount: String(body?.amount?.value || "0.00"),
+        serial
+      };
+
+      createdPayments.set(key, payment);
+
+      return new Response(JSON.stringify({
+        id: payment.id,
+        status: "pending",
+        paid: false,
+        amount: { value: payment.amount, currency: "RUB" },
+        confirmation: { type: "redirect", confirmation_url: `https://yookassa.test/pay/${serial}` },
+        captured_at: null
+      }), { status: 200 });
+    }
+
+    const amount = String(yookassaAmount ?? "1000.00");
+    const status = yookassaStatus;
 
     return new Response(JSON.stringify({
       id: "pay-test-1",
       status,
       paid: status === "succeeded",
       amount: { value: amount, currency: "RUB" },
-      confirmation: { type: "redirect", confirmation_url: "https://yookassa.test/pay/1" },
       captured_at: "2026-10-14T12:00:00.000Z",
       metadata: body?.metadata || {}
     }), { status: 200 });
@@ -282,13 +323,16 @@ await test("при создании платежа данные сохраняю
   assert.equal(lead.status, "new", "статус ремонта меняться не должен");
 });
 
-await test("повторное нажатие отдаёт ту же ссылку, а не создаёт второй платёж", async () => {
+await test("после прерванной оплаты ссылка выдаётся заново", async () => {
+  // Клиент начал оплату и ушёл. Сохранённая ссылка ЮKassa со временем
+  // перестаёт работать, поэтому по кнопке «Перейти к оплате» ссылку
+  // запрашиваем заново, а не отдаём старую.
   reset({
     leadList: [paidLead({
       payment_id: "pay-test-1",
       payment_status: "pending",
       payment_amount: 1000,
-      payment_url: "https://yookassa.test/pay/1"
+      payment_url: "https://yookassa.test/pay/stale"
     })],
     serviceList: [FIXED_SERVICE]
   });
@@ -296,11 +340,24 @@ await test("повторное нажатие отдаёт ту же ссылк�
   const response = await pay({ request: request({ leadId: "lead-1" }), env: ENV });
   const payload = await response.json();
 
-  assert.equal(payload.reused, true);
-  assert.equal(payload.paymentUrl, "https://yookassa.test/pay/1");
+  assert.equal(response.status, 200);
+  assert.ok(payload.paymentUrl, "ссылка на оплату должна быть");
+  assert.notEqual(payload.paymentUrl, "https://yookassa.test/pay/stale", "старая ссылка не должна использоваться");
 
   const created = yookassaCalls.filter((call) => call.method === "POST");
-  assert.equal(created.length, 0, "второй платёж создавать нельзя");
+  assert.equal(created.length, 1, "к ЮKassa должен уйти запрос за свежей ссылкой");
+});
+
+await test("повторное нажатие не создаёт второй платёж в ЮKassa", async () => {
+  // Два нажатия подряд: ключ идемпотентности одинаковый, значит ЮKassa
+  // вернёт тот же платёж, а не создаст второй.
+  reset({ leadList: [paidLead()], serviceList: [FIXED_SERVICE] });
+
+  const first = await (await pay({ request: request({ leadId: "lead-1" }), env: ENV })).json();
+  const second = await (await pay({ request: request({ leadId: "lead-1" }), env: ENV })).json();
+
+  assert.equal(first.paymentId, second.paymentId, "платёж должен быть один и тот же");
+  assert.ok(first.paymentUrl && second.paymentUrl, "обе попытки должны получить ссылку");
 });
 
 // --- Вебхук ---------------------------------------------------------------

@@ -10,8 +10,8 @@
 // токена Supabase, а не из запроса.
 
 import { getAuthUser, json, supabaseAdmin } from "../_lib/auth.js";
-import { isPaid, isPending, payableAmount } from "../_lib/payments.js";
-import { createPayment, fetchPayment, paymentsConfigured } from "../_lib/yookassa.js";
+import { isPaid, payableAmount } from "../_lib/payments.js";
+import { createPayment, paymentsConfigured } from "../_lib/yookassa.js";
 
 // Поля заявки, нужные для оплаты.
 const LEAD_COLUMNS = [
@@ -104,22 +104,12 @@ async function startPayment(request, user, env) {
     return json(409, { ok: false, error: reason, notPayable: true });
   }
 
-  // Если платёж уже создан, ждёт оплаты и сумма совпадает — отдаём прежнюю
-  // ссылку: второй платёж не нужен.
-  if (isPending(lead.payment_status) && lead.payment_id && lead.payment_url) {
-    const stillValid = await isStillPayable(env, lead.payment_id, amount);
-
-    if (stillValid) {
-      return json(200, {
-        ok: true,
-        reused: true,
-        paymentUrl: lead.payment_url,
-        paymentId: lead.payment_id,
-        paymentStatus: lead.payment_status,
-        amount
-      });
-    }
-  }
+  // Ссылку на оплату всегда получаем заново. ЮKassa выдаёт её только при
+  // создании платежа и со временем делает недействительной, поэтому
+  // сохранённая ссылка рано или поздно перестаёт открываться.
+  //
+  // От двойного списания защищает ключ идемпотентности ниже: внутри окна
+  // ЮKassa вернёт тот же платёж, но со свежей ссылкой.
 
   // Ключ идемпотентности: одинаковый внутри окна, поэтому случайное двойное
   // нажатие не создаёт второй платёж.
@@ -202,17 +192,6 @@ async function findService(env, serviceId) {
 
   const rows = await response.json();
   return Array.isArray(rows) && rows.length ? rows[0] : null;
-}
-
-/** Проверяет у ЮKassa, что платёж ещё ждёт оплаты и сумма не изменилась. */
-async function isStillPayable(env, paymentId, amount) {
-  const result = await fetchPayment(env, paymentId);
-
-  if (!result.ok) {
-    return false;
-  }
-
-  return result.payment.status === "pending" && Number(result.payment.amount) === Number(amount);
 }
 
 /** Записывает данные платежа в заявку. */
