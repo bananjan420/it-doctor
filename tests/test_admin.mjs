@@ -35,9 +35,9 @@ let failNext = false;
 
 // Справочник услуг: владелец ведёт его в админке.
 const servicesDb = [
-  { id: "s1", title: "Диагностика", price: "500 руб.", is_active: true, sort_order: 10 },
-  { id: "s2", title: "Чистка от пыли", price: "1 500 руб.", is_active: true, sort_order: 20 },
-  { id: "s3", title: "Скрытая услуга", price: "0 руб.", is_active: false, sort_order: 30 }
+  { id: "s1", title: "Диагностика", price_value: 500, is_active: true, sort_order: 10 },
+  { id: "s2", title: "Чистка от пыли", price_value: 1500, is_active: true, sort_order: 20 },
+  { id: "s3", title: "Скрытая услуга", price_value: 0, is_active: false, sort_order: 30 }
 ];
 
 function seedLeads() {
@@ -62,7 +62,7 @@ globalThis.fetch = async (url, options = {}) => {
 
     const rows = servicesDb.map((service) => ({
       title: service.title,
-      price: service.price,
+      price_value: service.price_value,
       is_active: service.is_active,
       sort_order: service.sort_order,
       id: service.id
@@ -604,7 +604,7 @@ await test("справочник услуг отдаётся для фильтр
   const labels = (payload.catalog || []).map((item) => item.label);
 
   assert.equal(response.status, 200);
-  assert.ok(labels.includes("Диагностика — 500 руб."), "услуга из справочника должна быть в списке");
+  assert.ok(labels.includes("Диагностика"), "услуга из справочника должна быть в списке");
   assert.ok(labels.some((label) => label.startsWith("Скрытая")), "выключенные услуги тоже видны в фильтре");
 });
 

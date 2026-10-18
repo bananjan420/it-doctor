@@ -2400,7 +2400,17 @@
     // видит услуги даже при медленной связи.
 
     function serviceOptionLabel(service) {
-      return service.price ? `${service.title} — ${service.price}` : service.title;
+      // В заявке услуга называется так же, как в каталоге: просто название.
+      return String(service.title || "");
+    }
+
+    /** Цена в виде «1 000 ₽»: в каталоге она хранится одним числом. */
+    function formatServicePrice(value) {
+      const amount = Number(value);
+
+      if (!Number.isFinite(amount) || amount <= 0) return "";
+
+      return `${new Intl.NumberFormat("ru-RU").format(amount)} ₽`;
     }
 
     function renderServiceCards(services) {
@@ -2421,7 +2431,9 @@
               ${icon ? `<div class="service-card__icon">${icon}</div>` : ""}
               <h3>${escapeHtml(service.title)}</h3>
               ${service.description ? `<p>${escapeHtml(service.description)}</p>` : ""}
-              ${service.price ? `<div class="service-card__price">${escapeHtml(service.price)}</div>` : ""}
+              ${formatServicePrice(service.priceValue)
+                ? `<div class="service-card__price">${escapeHtml(formatServicePrice(service.priceValue))}</div>`
+                : ""}
             </div>
           </article>`;
       }).join("");

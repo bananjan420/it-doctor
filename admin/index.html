@@ -727,12 +727,9 @@
             <label for="serviceDescription">Описание</label>
             <textarea id="serviceDescription" rows="3" maxlength="600" placeholder="Что входит в услугу"></textarea>
 
-            <label for="servicePrice">Цена на сайте</label>
-            <input id="servicePrice" type="text" maxlength="60" placeholder="от 500 руб." />
-
-            <label for="servicePriceValue">Цена числом</label>
+            <label for="servicePriceValue">Цена, ₽</label>
             <input id="servicePriceValue" type="number" min="0" step="1" placeholder="500" />
-            <span class="hint">Нужна для сортировки и сравнения. Можно не заполнять.</span>
+            <span class="hint">Одна цифра для всего: она показывается на сайте и списывается при оплате.</span>
 
             <label for="serviceIcon">Значок (класс иконки)</label>
             <input id="serviceIcon" type="text" maxlength="80" placeholder="fas fa-mobile-alt" />
@@ -1650,6 +1647,17 @@
     return String(value ?? "").replaceAll('"', "%22").replaceAll("<", "%3C").replaceAll(">", "%3E");
   }
 
+  /** Цена в виде «1 000 ₽». Хранится одним числом. */
+  function formatPrice(value) {
+    const amount = Number(value);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return "цена не указана";
+    }
+
+    return `${new Intl.NumberFormat("ru-RU").format(amount)} ₽`;
+  }
+
   function renderServices() {
     servicesEmpty.hidden = services.length > 0;
 
@@ -1667,7 +1675,7 @@
             <span>${escapeHtml(service.description || "без описания")}</span>
           </div>
 
-          <div class="service-row__price">${escapeHtml(service.price || "цена не указана")}</div>
+          <div class="service-row__price">${formatPrice(service.price_value)}</div>
           ${service.is_active ? "" : '<span class="service-row__off">скрыта</span>'}
 
           <div class="service-row__actions">
@@ -1705,8 +1713,8 @@
     document.getElementById("serviceModalTitle").textContent = service ? "Изменить услугу" : "Новая услуга";
     document.getElementById("serviceTitle").value = service?.title || "";
     document.getElementById("serviceDescription").value = service?.description || "";
-    document.getElementById("servicePrice").value = service?.price || "";
-    document.getElementById("servicePriceValue").value = service?.price_value ?? "";
+    document.getElementById("servicePriceValue").value =
+      service?.price_value ? service.price_value : "";
     document.getElementById("serviceIcon").value = service?.icon || "";
     document.getElementById("serviceOrder").value = service?.sort_order ?? "";
     document.getElementById("serviceActive").checked = service ? Boolean(service.is_active) : true;
@@ -1802,7 +1810,6 @@
     const body = {
       title,
       description: document.getElementById("serviceDescription").value.trim(),
-      price: document.getElementById("servicePrice").value.trim(),
       price_value: document.getElementById("servicePriceValue").value.trim(),
       icon: document.getElementById("serviceIcon").value.trim(),
       sort_order: document.getElementById("serviceOrder").value.trim(),

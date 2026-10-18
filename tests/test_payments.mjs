@@ -215,18 +215,15 @@ function paidLead(overrides = {}) {
 const FIXED_SERVICE = {
   id: "svc-fixed",
   title: "Замена термопасты",
-  price: "1 000 руб.",
   price_value: 1000,
-  price_is_from: false,
   is_active: true
 };
 
-const FROM_SERVICE = {
-  id: "svc-from",
+// Услуга без цены: оплатить нельзя.
+const NO_PRICE_SERVICE = {
+  id: "svc-no-price",
   title: "Замена аккумулятора",
-  price: "от 5 000 руб.",
-  price_value: 5000,
-  price_is_from: true,
+  price_value: 0,
   is_active: true
 };
 
@@ -264,10 +261,10 @@ await test("сумму из запроса клиента сервер игно�
   assert.equal(created.body.amount.value, "1000.00", "в ЮKassa не должна уйти сумма клиента");
 });
 
-await test("услугу с ценой «от» оплатить нельзя", async () => {
+await test("услугу без цены оплатить нельзя", async () => {
   reset({
-    leadList: [paidLead({ service_id: "svc-from", service: "Замена аккумулятора" })],
-    serviceList: [FROM_SERVICE]
+    leadList: [paidLead({ service_id: "svc-no-price", service: "Замена аккумулятора" })],
+    serviceList: [NO_PRICE_SERVICE]
   });
 
   const response = await pay({ request: request({ leadId: "lead-1" }), env: ENV });
@@ -275,8 +272,20 @@ await test("услугу с ценой «от» оплатить нельзя", 
 
   assert.equal(response.status, 409);
   assert.equal(payload.notPayable, true);
-  assert.match(payload.error, /от/);
+  assert.match(payload.error, /цена/i);
   assert.equal(yookassaCalls.length, 0, "платёж создавать нельзя");
+});
+
+await test("услугу с выключенной активностью оплатить нельзя", async () => {
+  reset({
+    leadList: [paidLead()],
+    serviceList: [{ ...FIXED_SERVICE, is_active: false }]
+  });
+
+  const response = await pay({ request: request({ leadId: "lead-1" }), env: ENV });
+
+  assert.equal(response.status, 409);
+  assert.equal(yookassaCalls.length, 0);
 });
 
 await test("чужую заявку оплатить нельзя", async () => {

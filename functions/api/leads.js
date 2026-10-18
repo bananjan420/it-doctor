@@ -324,7 +324,7 @@ async function handleStatusUpdate(request, env, origin) {
 async function servicesCatalog(env) {
   const response = await supabase(
     env,
-    "/rest/v1/services?select=title,price,is_active&order=sort_order.asc",
+    "/rest/v1/services?select=title,price_value,is_active&order=sort_order.asc",
     { method: "GET" }
   );
 
@@ -334,10 +334,9 @@ async function servicesCatalog(env) {
 
   const rows = await response.json();
 
-  return rows.map((row) => ({
-    label: row.price ? `${row.title} — ${row.price}` : row.title,
-    active: row.is_active
-  }));
+  // В фильтре и в заявке услуга называется так же, как в каталоге: просто
+  // название, без значка и без цены.
+  return rows.map((row) => ({ label: row.title, active: row.is_active }));
 }
 
 

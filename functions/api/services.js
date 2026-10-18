@@ -12,10 +12,10 @@ import { json, supabaseAdmin } from "./_lib/auth.js";
 import { isAuthorized } from "./_lib/session.js";
 
 // Только эти поля можно менять: id и даты назначает база.
+// Цена одна — числовая: из неё собирается и текст на сайте, и сумма платежа.
 const EDITABLE_FIELDS = [
   "title",
   "description",
-  "price",
   "price_value",
   "icon",
   "image",
@@ -25,7 +25,6 @@ const EDITABLE_FIELDS = [
 
 const MAX_TITLE = 120;
 const MAX_DESCRIPTION = 600;
-const MAX_PRICE = 60;
 const MAX_ICON = 80;
 // Картинка хранится прямо в базе (data:image/...): ограничиваем размер,
 // чтобы админка не могла залить что-то огромное.
@@ -246,15 +245,17 @@ function applyFields(row, payload, { requireTitle }) {
     row.description = description || null;
   }
 
-  if (payload.price !== undefined) {
-    const price = String(payload.price || "").trim().slice(0, MAX_PRICE);
-    row.price = price || null;
-  }
-
   if (payload.price_value !== undefined) {
-    // Цена числом нужна для сортировки и сравнения. Пустое значение — null.
-    const raw = String(payload.price_value ?? "").replace(/[^\d]/g, "");
-    row.price_value = raw ? Number(raw) : null;
+    // Цена задаётся только числом. Пустое значение — это ноль,
+    // такой услугой заплатить нельзя.
+    const digits = String(payload.price_value ?? "").replace(/[^\d]/g, "");
+    const value = digits ? Number(digits) : 0;
+
+    if (!Number.isFinite(value) || value < 0) {
+      return "Цена должна быть числом";
+    }
+
+    row.price_value = value;
   }
 
   if (payload.icon !== undefined) {
@@ -352,8 +353,7 @@ function publicService(row) {
     id: row.id,
     title: row.title,
     description: row.description || "",
-    price: row.price || "",
-    price_value: row.price_value,
+    price_value: Number(row.price_value) || 0,
     icon: row.icon || "",
     image: row.image || "",
     sort_order: row.sort_order,

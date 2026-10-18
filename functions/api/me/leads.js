@@ -106,7 +106,7 @@ async function withPayableAmounts(env, leads) {
 
   if (ids.length) {
     const params = new URLSearchParams({
-      select: "id,price_value,price_is_from,is_active",
+      select: "id,price_value,is_active",
       id: `in.(${ids.join(",")})`,
       limit: "200"
     });

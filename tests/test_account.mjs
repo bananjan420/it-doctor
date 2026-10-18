@@ -43,8 +43,8 @@ let signupDisabled = false;
 
 // Каталог услуг: цены и признак «от».
 const services = [
-  { id: "svc-fixed", title: "Замена термопасты", price_value: 1000, price_is_from: false, is_active: true },
-  { id: "svc-from", title: "Замена аккумулятора", price_value: 5000, price_is_from: true, is_active: true }
+  { id: "svc-fixed", title: "Замена термопасты", price_value: 1000, is_active: true },
+  { id: "svc-no-price", title: "Замена аккумулятора", price_value: 0, is_active: true }
 ];
 
 // Что вернёт заглушка ЮKassa. Тесты меняют это значение.

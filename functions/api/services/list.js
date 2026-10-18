@@ -31,7 +31,7 @@ export async function onRequest({ request, env }) {
   try {
     const response = await supabaseAdmin(
       env,
-      "/rest/v1/services?select=id,title,description,price,price_value,icon,image,sort_order" +
+      "/rest/v1/services?select=id,title,description,price_value,icon,image,sort_order" +
         "&is_active=is.true&order=sort_order.asc,created_at.asc",
       { method: "GET" }
     );
@@ -55,8 +55,8 @@ export async function onRequest({ request, env }) {
         id: row.id,
         title: row.title,
         description: row.description || "",
-        price: row.price || "",
-        priceValue: row.price_value,
+        // Цена одна и та же на сайте, в кабинете и в платеже: число из каталога.
+        priceValue: Number(row.price_value) || 0,
         icon: row.icon || "",
         image: row.image || "",
         sortOrder: row.sort_order

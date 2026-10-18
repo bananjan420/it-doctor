@@ -1378,8 +1378,12 @@
       select.innerHTML =
         '<option value="">Не выбрана</option>' +
         list.map((service) => {
-          const label = service.price ? `${service.title} — ${service.price}` : service.title;
-          const safe = label.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+          // В заявку уходит просто название услуги: цена хранится отдельно
+          // и не должна попадать в текст.
+          const safe = String(service.title)
+            .replaceAll("&", "&amp;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("<", "&lt;");
           return `<option value="${safe}">${safe}</option>`;
         }).join("") +
         '<option value="✏️ Другое">✏️ Другое</option>';

@@ -29,6 +29,9 @@ export function isPending(status) {
 /**
  * Можно ли оплатить услугу и сколько.
  *
+ * У всех услуг в каталоге цена фиксированная и хранится числом, поэтому
+ * оплатить можно любую — были бы цена и активность.
+ *
  * Возвращает { payable, amount, reason }:
  *   payable — можно ли создавать платёж;
  *   amount  — сумма в рублях, посчитанная по каталогу;
@@ -43,21 +46,13 @@ export function payableAmount(service) {
     return { payable: false, amount: 0, reason: "Услуга больше не оказывается." };
   }
 
-  if (service.price_is_from) {
-    return {
-      payable: false,
-      amount: 0,
-      reason: "Для этой услуги цена указана «от» — точную стоимость согласует мастер."
-    };
-  }
-
   const amount = Number(service.price_value);
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return {
       payable: false,
       amount: 0,
-      reason: "У услуги не указана точная цена — оплата недоступна."
+      reason: "У услуги не указана цена — оплата недоступна."
     };
   }
 
