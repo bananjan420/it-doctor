@@ -9,6 +9,7 @@
 
 import { getAuthUser, json, profileFrom, supabaseAdmin } from "../_lib/auth.js";
 import { payableAmount, paymentStatusLabel } from "../_lib/payments.js";
+import { findServiceId } from "../_lib/serviceMatch.js";
 import { paymentsConfigured } from "../_lib/yookassa.js";
 import { notifyOwner } from "../_lib/telegram.js";
 
@@ -209,10 +210,8 @@ async function createLead(request, user, env) {
 /**
  * Находит услугу каталога по названию из заявки.
  *
- * В заявке название записано текстом вида «🧹 Чистка от пыли — 1500 руб»,
- * поэтому ищем название каталога внутри строки. Совпадение должно быть
- * однозначным: при неоднозначности возвращаем null, чтобы не посчитать
- * оплату по чужой цене.
+ * Сравнение мягкое: по словам, без знаков и регистра. Так услуга находится,
+ * даже если владелец переименовал её после создания заявки.
  */
 async function matchServiceId(env, serviceLabel) {
   const label = String(serviceLabel || "").trim();
@@ -234,10 +233,7 @@ async function matchServiceId(env, serviceLabel) {
   }
 
   const rows = await response.json();
-  const lowered = label.toLowerCase();
-  const matches = rows.filter((row) => lowered.includes(String(row.title || "").toLowerCase()));
-
-  return matches.length === 1 ? matches[0].id : null;
+  return findServiceId(rows, label);
 }
 
 function cors() {

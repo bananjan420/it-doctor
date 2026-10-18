@@ -170,10 +170,12 @@ globalThis.fetch = async (url, options = {}) => {
 // --- Помощники ------------------------------------------------------------
 
 let failed = 0;
+let passed = 0;
 
 async function test(name, fn) {
   try {
     await fn();
+    passed += 1;
     console.log(`  OK     ${name}`);
   } catch (error) {
     failed += 1;
@@ -219,6 +221,14 @@ const FIXED_SERVICE = {
   is_active: true
 };
 
+// Услуга с переименованием: в заявке название чуть другое.
+const WINDOWS_SERVICE = {
+  id: "svc-windows",
+  title: "Установка Windows или ПО",
+  price_value: 3500,
+  is_active: true
+};
+
 // Услуга без цены: оплатить нельзя.
 const NO_PRICE_SERVICE = {
   id: "svc-no-price",
@@ -259,6 +269,41 @@ await test("сумму из запроса клиента сервер игно�
 
   const created = yookassaCalls.find((call) => call.method === "POST");
   assert.equal(created.body.amount.value, "1000.00", "в ЮKassa не должна уйти сумма клиента");
+});
+
+await test("заявка без связи оплачивается после сопоставления по названию", async () => {
+  // Владелец переименовал услугу после создания заявки, поэтому связи нет.
+  // Сервер находит услугу по словам и запоминает связь.
+  reset({
+    leadList: [paidLead({
+      service_id: null,
+      service: "Установка Windows или другого ПО"
+    })],
+    serviceList: [WINDOWS_SERVICE]
+  });
+
+  const response = await pay({ request: request({ leadId: "lead-1" }), env: ENV });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200, "оплата должна создаться");
+  assert.equal(payload.amount, 3500);
+
+  const lead = leads.find((item) => item.id === "lead-1");
+  assert.equal(lead.service_id, "svc-windows", "связь должна запомниться");
+});
+
+await test("непонятное название услуги не оплачивается", async () => {
+  reset({
+    leadList: [paidLead({ service_id: null, service: "Что-то совсем другое" })],
+    serviceList: [WINDOWS_SERVICE, FIXED_SERVICE]
+  });
+
+  const response = await pay({ request: request({ leadId: "lead-1" }), env: ENV });
+  const payload = await response.json();
+
+  assert.equal(response.status, 409);
+  assert.equal(payload.notPayable, true);
+  assert.equal(yookassaCalls.length, 0);
 });
 
 await test("услугу без цены оплатить нельзя", async () => {
@@ -526,5 +571,5 @@ await test("без ключей ЮKassa оплата честно сообщае
   assert.match(payload.error, /не настроен/i);
 });
 
-console.log(`\nИтог: пройдено ${20 - failed}, провалено ${failed}`);
+console.log(`\nИтог: пройдено ${passed}, провалено ${failed}`);
 process.exit(failed === 0 ? 0 : 1);

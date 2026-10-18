@@ -11,11 +11,13 @@
 
 import { getAuthUser, json, supabaseAdmin } from "../_lib/auth.js";
 import { isPaid, payableAmount } from "../_lib/payments.js";
+import { findServiceId } from "../_lib/serviceMatch.js";
 import { createPayment, paymentsConfigured } from "../_lib/yookassa.js";
 
 // Поля заявки, нужные для оплаты.
 const LEAD_COLUMNS = [
   "id",
+  "service",
   "service_id",
   "payment_id",
   "payment_status",
@@ -95,7 +97,18 @@ async function startPayment(request, user, env) {
     });
   }
 
+  // Связь с каталогом могла не установиться при создании заявки — например,
+  // если владелец потом переименовал услугу. Тогда ищем её по названию и
+  // запоминаем связь, чтобы больше не искать.
+  if (!lead.service_id) {
+    lead.service_id = await matchServiceId(env, lead.service);
+  }
+
   const service = await findService(env, lead.service_id);
+
+  if (lead.service_id && service) {
+    await savePayment(env, lead.id, { service_id: lead.service_id });
+  }
 
   // Сумму и возможность оплаты определяет сервер по каталогу услуг.
   const { payable, amount, reason } = payableAmount(service);
@@ -145,6 +158,28 @@ async function startPayment(request, user, env) {
     paymentStatus: created.payment.status,
     amount
   });
+}
+
+/**
+ * Ищет услугу каталога по названию из заявки.
+ *
+ * Нужен для старых заявок без связи: сравниваем мягко, по словам.
+ */
+async function matchServiceId(env, serviceLabel) {
+  const label = String(serviceLabel || "").trim();
+
+  if (!label || label === "Не выбрана") {
+    return null;
+  }
+
+  const params = new URLSearchParams({ select: "id,title", order: "sort_order.asc", limit: "200" });
+  const response = await supabaseAdmin(env, `/rest/v1/services?${params.toString()}`, { method: "GET" });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return findServiceId(await response.json(), label);
 }
 
 /** Ищет заявку этого клиента вместе с полями оплаты. */
