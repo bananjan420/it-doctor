@@ -107,19 +107,28 @@
 
     label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-align: left; letter-spacing: .02em; text-transform: uppercase; }
 
-    input[type="password"], input[type="date"], input[type="search"], input[type="text"], select {
+    /* Все поля ввода, включая textarea и числовые: иначе браузер рисует
+       их белыми и они выбиваются из тёмной панели. */
+    input[type="password"], input[type="date"], input[type="search"], input[type="text"],
+    input[type="number"], input[type="tel"], input[type="email"], select, textarea {
       width: 100%;
       padding: 11px 13px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
-      background: var(--bg-secondary);
+      background: rgba(255, 255, 255, 0.035);
       color: var(--text-primary);
       font: inherit;
-      transition: border-color var(--transition);
+      transition: border-color var(--transition), background var(--transition);
     }
 
-    input:focus, select:focus { outline: none; border-color: var(--accent); }
-    input::placeholder { color: var(--text-muted); }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(0, 212, 255, 0.06);
+    }
+
+    input::placeholder, textarea::placeholder { color: var(--text-muted); }
+    textarea { resize: vertical; min-height: 88px; line-height: 1.55; }
     input[type="password"] { margin-bottom: 14px; }
 
     .error { color: #FF6B6B; font-size: 14px; min-height: 20px; margin-top: 12px; }
@@ -553,7 +562,7 @@
     .sheet__card {
       position: relative;
       width: 100%;
-      max-width: 620px;
+      max-width: 680px;
       max-height: calc(100vh - 36px);
       overflow-y: auto;
       padding: 24px;
@@ -573,13 +582,25 @@
       line-height: 1;
     }
 
-    .sheet__grid { display: flex; flex-wrap: wrap; gap: 20px; }
-    .sheet__photo { flex: 0 0 180px; }
-    .sheet__fields { flex: 1 1 300px; min-width: 0; }
+    .sheet__grid { display: flex; flex-wrap: wrap; gap: 22px; }
+    .sheet__photo { flex: 0 0 190px; }
+    .sheet__fields { flex: 1 1 320px; min-width: 0; }
+
+    /* Две короткие подписи рядом: цена и порядок */
+    .sheet__row { display: flex; gap: 12px; }
+    .sheet__row > * { flex: 1; min-width: 0; }
 
     .sheet__fields label { display: block; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
     .sheet__fields label:first-child { margin-top: 0; }
     .sheet__fields .hint { display: block; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+
+    .photo-caption {
+      margin-bottom: 8px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-muted);
+    }
 
     .photo-box {
       width: 100%;
@@ -710,6 +731,7 @@
       <form id="serviceForm">
         <div class="sheet__grid">
           <div class="sheet__photo">
+            <div class="photo-caption">Фото услуги</div>
             <div class="photo-box" id="servicePhotoBox">
               <span class="photo-hint">Нет фото</span>
             </div>
@@ -727,16 +749,20 @@
             <label for="serviceDescription">Описание</label>
             <textarea id="serviceDescription" rows="3" maxlength="600" placeholder="Что входит в услугу"></textarea>
 
-            <label for="servicePriceValue">Цена, ₽</label>
-            <input id="servicePriceValue" type="number" min="0" step="1" placeholder="500" />
-            <span class="hint">Одна цифра для всего: она показывается на сайте и списывается при оплате.</span>
-
-            <label for="serviceIcon">Значок (класс иконки)</label>
-            <input id="serviceIcon" type="text" maxlength="80" placeholder="fas fa-mobile-alt" />
-
-            <label for="serviceOrder">Порядок на сайте</label>
-            <input id="serviceOrder" type="number" step="10" placeholder="10" />
-            <span class="hint">Чем меньше число, тем выше услуга в списке.</span>
+            <div class="sheet__row">
+              <div>
+                <label for="servicePriceValue">Цена, ₽</label>
+                <input id="servicePriceValue" type="number" min="0" step="1" placeholder="500" />
+              </div>
+              <div>
+                <label for="serviceOrder">Порядок</label>
+                <input id="serviceOrder" type="number" step="10" placeholder="10" />
+              </div>
+            </div>
+            <span class="hint">
+              Цена одна для всего: показывается на сайте и списывается при оплате.
+              Порядок: чем меньше число, тем выше услуга в списке.
+            </span>
 
             <label class="switch">
               <input type="checkbox" id="serviceActive" checked />
@@ -1647,6 +1673,22 @@
     return String(value ?? "").replaceAll('"', "%22").replaceAll("<", "%3C").replaceAll(">", "%3E");
   }
 
+  /**
+   * Адрес картинки услуги.
+   *
+   * В каталоге картинки записаны путями от корня сайта («assets/services/…»).
+   * Админка открыта по адресу /admin/, поэтому без ведущего слэша браузер
+   * искал бы файл в /admin/assets/… и показывал значок битой картинки.
+   */
+  function imageUrl(value) {
+    const src = String(value || "").trim();
+
+    if (!src) return "";
+    if (/^(data:|https?:|\/\/|\/)/i.test(src)) return src;
+
+    return `/${src}`;
+  }
+
   /** Цена в виде «1 000 ₽». Хранится одним числом. */
   function formatPrice(value) {
     const amount = Number(value);
@@ -1663,7 +1705,7 @@
 
     serviceList.innerHTML = services.map((service) => {
       const photo = service.image
-        ? `<img src="${attrSafe(service.image)}" alt="" />`
+        ? `<img src="${attrSafe(imageUrl(service.image))}" alt="" />`
         : '<span>🛠</span>';
 
       return `
@@ -1703,7 +1745,7 @@
   function setPhoto(image) {
     pendingImage = image;
     servicePhotoBox.innerHTML = image
-      ? `<img src="${attrSafe(image)}" alt="" />`
+      ? `<img src="${attrSafe(imageUrl(image))}" alt="" />`
       : '<span class="photo-hint">Нет фото</span>';
   }
 
@@ -1715,7 +1757,6 @@
     document.getElementById("serviceDescription").value = service?.description || "";
     document.getElementById("servicePriceValue").value =
       service?.price_value ? service.price_value : "";
-    document.getElementById("serviceIcon").value = service?.icon || "";
     document.getElementById("serviceOrder").value = service?.sort_order ?? "";
     document.getElementById("serviceActive").checked = service ? Boolean(service.is_active) : true;
 
@@ -1811,7 +1852,6 @@
       title,
       description: document.getElementById("serviceDescription").value.trim(),
       price_value: document.getElementById("servicePriceValue").value.trim(),
-      icon: document.getElementById("serviceIcon").value.trim(),
       sort_order: document.getElementById("serviceOrder").value.trim(),
       is_active: document.getElementById("serviceActive").checked
     };
