@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#0B0E14" />
   <title>Заявки — IT Doctor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -594,6 +595,56 @@
     .sheet__fields label:first-child { margin-top: 0; }
     .sheet__fields .hint { display: block; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
 
+    /* Выбор иконки: плитки со значками вместо ввода технического кода */
+    .icon-picker {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .icon-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 64px;
+      padding: 9px 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      font: inherit;
+      font-size: 11px;
+      line-height: 1.2;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .icon-option i,
+    .icon-option .icon-none { font-size: 18px; line-height: 1; }
+
+    .icon-option:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .icon-option[data-selected="true"] {
+      border-color: var(--accent);
+      background: rgba(0, 212, 255, 0.12);
+      color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent) inset;
+    }
+
+    .icon-option span {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .photo-caption {
       margin-bottom: 8px;
       font-size: 12px;
@@ -763,6 +814,10 @@
               Цена одна для всего: показывается на сайте и списывается при оплате.
               Порядок: чем меньше число, тем выше услуга в списке.
             </span>
+
+            <label>Иконка на карточке</label>
+            <div class="icon-picker" id="iconPicker"></div>
+            <span class="hint">Небольшой значок над названием услуги на сайте. Можно не выбирать.</span>
 
             <label class="switch">
               <input type="checkbox" id="serviceActive" checked />
@@ -1673,6 +1728,76 @@
     return String(value ?? "").replaceAll('"', "%22").replaceAll("<", "%3C").replaceAll(">", "%3E");
   }
 
+  // Набор иконок для карточек услуг. Значение — класс Font Awesome,
+  // который сохраняется в каталоге и используется на сайте.
+  const SERVICE_ICONS = [
+    { value: "", label: "Без иконки" },
+    { value: "fas fa-stethoscope", label: "Диагностика" },
+    { value: "fas fa-fan", label: "Чистка" },
+    { value: "fas fa-temperature-low", label: "Температура" },
+    { value: "fab fa-windows", label: "Windows" },
+    { value: "fas fa-mobile-alt", label: "Телефон" },
+    { value: "fas fa-battery-full", label: "Батарея" },
+    { value: "fas fa-hdd", label: "Диск" },
+    { value: "fas fa-desktop", label: "Компьютер" },
+    { value: "fas fa-laptop-medical", label: "Ноутбук" },
+    { value: "fas fa-screwdriver-wrench", label: "Инструменты" },
+    { value: "fas fa-microchip", label: "Чип" },
+    { value: "fas fa-database", label: "Данные" },
+    { value: "fas fa-shield-halved", label: "Защита" },
+    { value: "fas fa-keyboard", label: "Клавиатура" },
+    { value: "fas fa-print", label: "Принтер" },
+    { value: "fas fa-wifi", label: "Wi-Fi" },
+    { value: "fas fa-bolt", label: "Питание" },
+    { value: "fas fa-gear", label: "Настройки" },
+    { value: "fas fa-memory", label: "Память" },
+    { value: "fas fa-star", label: "Другое" }
+  ];
+
+  // Какая иконка выбрана в открытом окне.
+  let selectedIcon = "";
+
+  /**
+   * Рисует плитки с иконками.
+   *
+   * Если у услуги стоит иконка не из набора, показываем её первой, чтобы
+   * сохранение не потеряло прежнее значение.
+   */
+  function renderIconPicker(current) {
+    const picker = document.getElementById("iconPicker");
+    const list = [...SERVICE_ICONS];
+
+    if (current && !list.some((option) => option.value === current)) {
+      list.unshift({ value: current, label: "Текущая" });
+    }
+
+    selectedIcon = current || "";
+
+    picker.innerHTML = list.map((option) => {
+      const selected = option.value === selectedIcon;
+      const glyph = option.value
+        ? `<i class="${attrSafe(option.value)}"></i>`
+        : '<span class="icon-none">—</span>';
+
+      return `
+        <button type="button" class="icon-option" data-icon="${attrSafe(option.value)}" data-selected="${selected}">
+          ${glyph}
+          <span>${escapeHtml(option.label)}</span>
+        </button>`;
+    }).join("");
+  }
+
+  document.getElementById("iconPicker").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-icon]");
+    if (!button) return;
+
+    selectedIcon = button.dataset.icon;
+
+    document.querySelectorAll("#iconPicker .icon-option").forEach((item) => {
+      item.dataset.selected = String(item === button);
+    });
+  });
+
   /**
    * Адрес картинки услуги.
    *
@@ -1706,7 +1831,9 @@
     serviceList.innerHTML = services.map((service) => {
       const photo = service.image
         ? `<img src="${attrSafe(imageUrl(service.image))}" alt="" />`
-        : '<span>🛠</span>';
+        : (service.icon
+            ? `<i class="${attrSafe(service.icon)}"></i>`
+            : '<span>🛠</span>');
 
       return `
         <div class="service-row" data-id="${escapeHtml(service.id)}" data-off="${service.is_active ? "false" : "true"}">
@@ -1761,6 +1888,7 @@
     document.getElementById("serviceActive").checked = service ? Boolean(service.is_active) : true;
 
     setPhoto(service?.image || null);
+    renderIconPicker(service?.icon || "");
     serviceDeleteBtn.hidden = !service;
     showServiceNotice("", null);
     document.getElementById("serviceImage").value = "";
@@ -1852,6 +1980,7 @@
       title,
       description: document.getElementById("serviceDescription").value.trim(),
       price_value: document.getElementById("servicePriceValue").value.trim(),
+      icon: selectedIcon,
       sort_order: document.getElementById("serviceOrder").value.trim(),
       is_active: document.getElementById("serviceActive").checked
     };
