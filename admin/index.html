@@ -744,6 +744,21 @@
       header.top h1 { font-size: 20px; }
       .stat { min-width: 104px; padding: 11px 14px; }
       .stat b { font-size: 20px; }
+
+      /* Вкладки и кнопка добавления — во всю ширину, так удобнее пальцем */
+      .tabs-nav { width: 100%; }
+      .tabs-nav .tab { flex: 1; padding: 11px 8px; font-size: 13px; }
+
+      .services-bar { align-items: stretch; }
+      .services-bar .primary { width: 100%; }
+
+      .service-row { gap: 10px; padding: 12px; }
+      .service-row__photo { width: 56px; height: 44px; font-size: 16px; }
+      .service-row__handle { width: 14px; }
+
+      /* Окно услуги почти на весь экран */
+      .sheet { padding: 10px; }
+      .sheet__card { padding: 18px; max-height: calc(100vh - 20px); }
     }
   </style>
 </head>

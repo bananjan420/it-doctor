@@ -195,6 +195,14 @@
       font-size: 11px;
       color: var(--text-muted);
       opacity: .7;
+
+      /* Долгое нажатие на телефоне не должно открывать меню «копировать»:
+         эта строка служит секретной кнопкой входа в админку. */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+      cursor: default;
     }
 
     /* --- Шапка кабинета --- */
@@ -1739,6 +1747,34 @@
     } catch {
       buildStamp.textContent = "неизвестно";
     }
+  }
+
+  // --- Вход в админку с телефона ------------------------------------------
+  //
+  // На сенсорных экранах клавиши Shift нет, поэтому админку открывает
+  // долгое нажатие (1,5 секунды) на строке с версией внизу страницы.
+  // На компьютере по-прежнему работают три быстрых Shift.
+
+  const buildLine = document.querySelector(".build");
+  let ownerPressTimer = null;
+
+  function startOwnerPress() {
+    clearTimeout(ownerPressTimer);
+    ownerPressTimer = setTimeout(showOwnerToast, 1500);
+  }
+
+  function cancelOwnerPress() {
+    clearTimeout(ownerPressTimer);
+  }
+
+  if (buildLine) {
+    buildLine.addEventListener("touchstart", startOwnerPress, { passive: true });
+    buildLine.addEventListener("touchend", cancelOwnerPress);
+    buildLine.addEventListener("touchmove", cancelOwnerPress);
+    buildLine.addEventListener("touchcancel", cancelOwnerPress);
+    buildLine.addEventListener("mousedown", startOwnerPress);
+    buildLine.addEventListener("mouseup", cancelOwnerPress);
+    buildLine.addEventListener("mouseleave", cancelOwnerPress);
   }
 
   // --- Старт --------------------------------------------------------------
