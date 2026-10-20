@@ -154,6 +154,15 @@
     .field { margin-bottom: 16px; }
 
     /* --- Вход и регистрация --- */
+    /* Вкладка «Вход» служит секретной кнопкой входа в админку:
+       долгое нажатие не должно открывать меню копирования. */
+    #tabLogin {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
     .tabs { display: flex; gap: 8px; margin-bottom: 22px; background: var(--bg-secondary); padding: 5px; border-radius: var(--radius-sm); }
     .tabs button { flex: 1; border: none; background: transparent; color: var(--text-secondary); font-weight: 600; }
     .tabs button[data-active="true"] { background: var(--accent-gradient); color: #04121A; box-shadow: var(--shadow-accent); }
@@ -1752,10 +1761,9 @@
   // --- Вход в админку с телефона ------------------------------------------
   //
   // На сенсорных экранах клавиши Shift нет, поэтому админку открывает
-  // долгое нажатие (1,5 секунды) на строке с версией внизу страницы.
+  // долгое нажатие (1,5 секунды) на вкладке «Вход» в форме кабинета.
   // На компьютере по-прежнему работают три быстрых Shift.
 
-  const buildLine = document.querySelector(".build");
   let ownerPressTimer = null;
 
   function startOwnerPress() {
@@ -1767,14 +1775,14 @@
     clearTimeout(ownerPressTimer);
   }
 
-  if (buildLine) {
-    buildLine.addEventListener("touchstart", startOwnerPress, { passive: true });
-    buildLine.addEventListener("touchend", cancelOwnerPress);
-    buildLine.addEventListener("touchmove", cancelOwnerPress);
-    buildLine.addEventListener("touchcancel", cancelOwnerPress);
-    buildLine.addEventListener("mousedown", startOwnerPress);
-    buildLine.addEventListener("mouseup", cancelOwnerPress);
-    buildLine.addEventListener("mouseleave", cancelOwnerPress);
+  if (tabLogin) {
+    tabLogin.addEventListener("touchstart", startOwnerPress, { passive: true });
+    tabLogin.addEventListener("touchend", cancelOwnerPress);
+    tabLogin.addEventListener("touchmove", cancelOwnerPress);
+    tabLogin.addEventListener("touchcancel", cancelOwnerPress);
+    tabLogin.addEventListener("mousedown", startOwnerPress);
+    tabLogin.addEventListener("mouseup", cancelOwnerPress);
+    tabLogin.addEventListener("mouseleave", cancelOwnerPress);
   }
 
   // --- Старт --------------------------------------------------------------

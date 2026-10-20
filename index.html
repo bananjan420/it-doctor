@@ -349,6 +349,15 @@
     .modal__title { font-size: 24px; margin: 0 0 6px; }
     .modal__sub { color: var(--text-muted); font-size: 14px; margin: 0 0 18px; }
 
+    /* Вкладка «Вход» служит секретной кнопкой входа в админку:
+       долгое нажатие не должно открывать меню копирования. */
+    #loginTab {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
     .modal__tabs {
       display: flex;
       gap: 6px;
@@ -2298,6 +2307,25 @@
       siteLoginBtn.addEventListener("click", openLoginModal);
 
       loginTab.addEventListener("click", () => setAuthMode("login"));
+
+      // Долгое нажатие на вкладке «Вход» открывает админку владельца:
+      // на телефоне нет клавиши Shift для секретного входа.
+      let ownerPressTimer = null;
+
+      const startOwnerPress = () => {
+        clearTimeout(ownerPressTimer);
+        ownerPressTimer = setTimeout(() => { window.location.href = "/admin/"; }, 1500);
+      };
+
+      const cancelOwnerPress = () => clearTimeout(ownerPressTimer);
+
+      loginTab.addEventListener("touchstart", startOwnerPress, { passive: true });
+      loginTab.addEventListener("touchend", cancelOwnerPress);
+      loginTab.addEventListener("touchmove", cancelOwnerPress);
+      loginTab.addEventListener("touchcancel", cancelOwnerPress);
+      loginTab.addEventListener("mousedown", startOwnerPress);
+      loginTab.addEventListener("mouseup", cancelOwnerPress);
+      loginTab.addEventListener("mouseleave", cancelOwnerPress);
       registerTab.addEventListener("click", () => setAuthMode("register"));
 
       loginModal.querySelectorAll("[data-close-login]").forEach((el) => {
