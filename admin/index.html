@@ -515,6 +515,31 @@
 
     .service-row[data-off="true"] { opacity: .55; }
 
+    /* Ручка и состояние перетаскивания */
+    .service-row__handle {
+      flex: none;
+      width: 18px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .service-row[draggable="true"] { cursor: default; }
+
+    .service-row[data-dragging="true"] {
+      opacity: .45;
+      border-style: dashed;
+      border-color: var(--accent);
+    }
+
+    .service-row__actions button[data-move] {
+      padding: 8px 10px;
+      font-size: 13px;
+      line-height: 1;
+    }
+
     .service-row__photo {
       width: 72px; height: 54px;
       flex: none;
@@ -800,19 +825,11 @@
             <label for="serviceDescription">Описание</label>
             <textarea id="serviceDescription" rows="3" maxlength="600" placeholder="Что входит в услугу"></textarea>
 
-            <div class="sheet__row">
-              <div>
-                <label for="servicePriceValue">Цена, ₽</label>
-                <input id="servicePriceValue" type="number" min="0" step="1" placeholder="500" />
-              </div>
-              <div>
-                <label for="serviceOrder">Порядок</label>
-                <input id="serviceOrder" type="number" step="10" placeholder="10" />
-              </div>
-            </div>
+            <label for="servicePriceValue">Цена, ₽</label>
+            <input id="servicePriceValue" type="number" min="0" step="1" placeholder="500" />
             <span class="hint">
               Цена одна для всего: показывается на сайте и списывается при оплате.
-              Порядок: чем меньше число, тем выше услуга в списке.
+              Порядок услуг меняется перетаскиванием в списке.
             </span>
 
             <label>Иконка на карточке</label>
@@ -1077,6 +1094,11 @@
 
     if (action === "DELETE_SERVICE") {
       return request(`/api/services?id=${encodeURIComponent(body.id)}`, "DELETE");
+    }
+
+    if (action === "REORDER_SERVICES") {
+      // Список id в том порядке, в котором владелец расставил услуги.
+      return request("/api/services", "PATCH", { order: body.order });
     }
 
     return { status: 0, payload: { ok: false, error: "Неизвестное действие" } };
@@ -1836,7 +1858,8 @@
             : '<span>🛠</span>');
 
       return `
-        <div class="service-row" data-id="${escapeHtml(service.id)}" data-off="${service.is_active ? "false" : "true"}">
+        <div class="service-row" data-id="${escapeHtml(service.id)}" data-off="${service.is_active ? "false" : "true"}" draggable="true">
+          <span class="service-row__handle" title="Перетащите, чтобы изменить порядок">⠿</span>
           <div class="service-row__photo">${photo}</div>
 
           <div class="service-row__text">
@@ -1848,6 +1871,8 @@
           ${service.is_active ? "" : '<span class="service-row__off">скрыта</span>'}
 
           <div class="service-row__actions">
+            <button type="button" data-move="up" title="Поднять выше" aria-label="Поднять выше">↑</button>
+            <button type="button" data-move="down" title="Опустить ниже" aria-label="Опустить ниже">↓</button>
             <button type="button" data-edit>Изменить</button>
           </div>
         </div>`;
@@ -1855,12 +1880,93 @@
   }
 
   serviceList.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-edit]");
-    if (!button) return;
+    const edit = event.target.closest("[data-edit]");
 
-    const id = button.closest(".service-row").dataset.id;
-    openServiceModal(services.find((service) => service.id === id) || null);
+    if (edit) {
+      const id = edit.closest(".service-row").dataset.id;
+      openServiceModal(services.find((service) => service.id === id) || null);
+      return;
+    }
+
+    // Стрелки — запасной способ поменять порядок: перетаскивание работает
+    // не на всех сенсорных экранах.
+    const move = event.target.closest("[data-move]");
+    if (!move) return;
+
+    const row = move.closest(".service-row");
+
+    if (move.dataset.move === "up" && row.previousElementSibling) {
+      serviceList.insertBefore(row, row.previousElementSibling);
+    } else if (move.dataset.move === "down" && row.nextElementSibling) {
+      serviceList.insertBefore(row.nextElementSibling, row);
+    } else {
+      return;
+    }
+
+    saveOrder();
   });
+
+  // --- Перетаскивание услуг ------------------------------------------------
+
+  let draggedId = null;
+
+  serviceList.addEventListener("dragstart", (event) => {
+    const row = event.target.closest(".service-row");
+    if (!row) return;
+
+    // С кнопок перетаскивание не начинаем: они должны нажиматься.
+    if (event.target.closest("button")) {
+      event.preventDefault();
+      return;
+    }
+
+    draggedId = row.dataset.id;
+    row.dataset.dragging = "true";
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedId);
+  });
+
+  serviceList.addEventListener("dragover", (event) => {
+    if (!draggedId) return;
+    event.preventDefault();
+
+    const target = event.target.closest(".service-row");
+    if (!target) return;
+
+    const dragged = [...serviceList.querySelectorAll(".service-row")]
+      .find((row) => row.dataset.id === draggedId);
+
+    if (!dragged || target === dragged) return;
+
+    // Куда вставлять: выше или ниже середины строки под курсором.
+    const rect = target.getBoundingClientRect();
+    const insertBefore = event.clientY < rect.top + rect.height / 2;
+
+    serviceList.insertBefore(dragged, insertBefore ? target : target.nextSibling);
+  });
+
+  serviceList.addEventListener("dragend", () => {
+    const row = serviceList.querySelector('[data-dragging="true"]');
+    if (row) row.dataset.dragging = "false";
+
+    if (!draggedId) return;
+    draggedId = null;
+    saveOrder();
+  });
+
+  /** Сохраняет порядок услуг, который сейчас виден в списке. */
+  async function saveOrder() {
+    const order = [...serviceList.querySelectorAll(".service-row")].map((row) => row.dataset.id);
+    const { status, payload } = await servicesApi("REORDER_SERVICES", { order });
+
+    if (status !== 200 || !payload.ok) {
+      alert(payload.error || "Не удалось сохранить порядок услуг");
+      await loadServices();
+      return;
+    }
+
+    await loadServices();
+  }
 
   // --- Окно услуги ---
 
@@ -1884,7 +1990,6 @@
     document.getElementById("serviceDescription").value = service?.description || "";
     document.getElementById("servicePriceValue").value =
       service?.price_value ? service.price_value : "";
-    document.getElementById("serviceOrder").value = service?.sort_order ?? "";
     document.getElementById("serviceActive").checked = service ? Boolean(service.is_active) : true;
 
     setPhoto(service?.image || null);
@@ -1981,7 +2086,6 @@
       description: document.getElementById("serviceDescription").value.trim(),
       price_value: document.getElementById("servicePriceValue").value.trim(),
       icon: selectedIcon,
-      sort_order: document.getElementById("serviceOrder").value.trim(),
       is_active: document.getElementById("serviceActive").checked
     };
 

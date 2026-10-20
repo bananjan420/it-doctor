@@ -6,6 +6,7 @@
 
 import assert from "node:assert/strict";
 import { onRequest, SOURCES, STATUSES, verifySession } from "../functions/api/leads.js";
+import { onRequest as servicesApi } from "../functions/api/services.js";
 
 const ENV = {
   ADMIN_KEY: "adk-test-key",
@@ -671,6 +672,60 @@ await test("справочник услуг сужается выбранным 
     supabaseCalls.find((call) => call.url.includes("select=service"))?.url || ""
   );
   assert.match(query, /source=eq\.mini_app/, "услуги должны фильтроваться по источнику");
+});
+
+await test("перетаскивание услуг сохраняет новый порядок", async () => {
+  const cookie = await login();
+  supabaseCalls = [];
+
+  const response = await servicesApi({
+    request: new Request("https://it-doctor.pages.dev/api/services", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ order: ["s2", "s1"] })
+    }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  const patches = supabaseCalls.filter((call) => call.method === "PATCH" && call.url.includes("/rest/v1/services"));
+  assert.equal(patches.length, 2, "должны обновиться обе услуги");
+  assert.ok(patches[0].url.includes("id=eq.s2"), "первой идёт услуга, поставленная выше");
+  assert.equal(patches[0].body.sort_order, 10);
+  assert.equal(patches[1].body.sort_order, 20);
+});
+
+await test("порядок с повторяющимися услугами отклоняется", async () => {
+  const cookie = await login();
+
+  const response = await servicesApi({
+    request: new Request("https://it-doctor.pages.dev/api/services", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ order: ["s1", "s1"] })
+    }),
+    env: ENV
+  });
+
+  const payload = await response.json();
+  assert.equal(response.status, 400);
+  assert.match(payload.error, /повтор/i);
+});
+
+await test("порядок меняет только владелец", async () => {
+  const response = await servicesApi({
+    request: new Request("https://it-doctor.pages.dev/api/services", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: ["s1"] })
+    }),
+    env: ENV
+  });
+
+  assert.equal(response.status, 401);
 });
 
 await test("ошибка базы не ломает API", async () => {

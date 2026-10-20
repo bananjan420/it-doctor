@@ -144,6 +144,11 @@ async function updateService(request, env, origin) {
     return json(400, { ok: false, error: "Ожидается JSON" }, origin);
   }
 
+  // Перетаскивание в админке присылает список услуг в нужном порядке.
+  if (Array.isArray(payload.order)) {
+    return await reorderServices(payload.order, env, origin);
+  }
+
   const id = String(payload.id || "").trim();
   if (!id) {
     return json(400, { ok: false, error: "Не указан id услуги" }, origin);
@@ -183,6 +188,50 @@ async function updateService(request, env, origin) {
   await bumpVersion(env);
 
   return json(200, { ok: true, service: publicService(updated[0]) }, origin);
+}
+
+/**
+ * Сохраняет новый порядок услуг.
+ *
+ * Приходит список id в том порядке, в котором владелец расставил услуги.
+ * Каждой услуге назначаем номер с шагом 10 — так между ними можно вставить
+ * новую, не перенумеровывая всё заново.
+ */
+async function reorderServices(order, env, origin) {
+  const ids = order.map((value) => String(value || "").trim()).filter(Boolean);
+
+  if (ids.length === 0) {
+    return json(400, { ok: false, error: "Пустой список услуг" }, origin);
+  }
+
+  if (ids.length > 200) {
+    return json(400, { ok: false, error: "Слишком много услуг" }, origin);
+  }
+
+  if (new Set(ids).size !== ids.length) {
+    return json(400, { ok: false, error: "В списке повторяются услуги" }, origin);
+  }
+
+  for (let index = 0; index < ids.length; index += 1) {
+    const response = await supabaseAdmin(env, `/rest/v1/services?id=eq.${encodeURIComponent(ids[index])}`, {
+      method: "PATCH",
+      body: JSON.stringify({ sort_order: (index + 1) * 10 })
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      console.error("Supabase reorder failed", {
+        status: response.status,
+        detail: detail.slice(0, 200)
+      });
+      return json(502, { ok: false, error: "Не удалось сохранить порядок" }, origin);
+    }
+  }
+
+  // Сайт должен увидеть новый порядок сразу.
+  await bumpVersion(env);
+
+  return json(200, { ok: true }, origin);
 }
 
 async function deleteService(url, env, origin) {
