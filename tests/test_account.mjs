@@ -7,6 +7,8 @@
 
 import assert from "node:assert/strict";
 import { onRequest as register } from "../functions/api/auth/register.js";
+import { onRequest as recover } from "../functions/api/auth/recover.js";
+import { onRequest as recoverVerify } from "../functions/api/auth/recover-verify.js";
 import { onRequest as login } from "../functions/api/auth/login.js";
 import { onRequest as accountLeads } from "../functions/api/me/leads.js";
 import { onRequest as profileApi } from "../functions/api/me/profile.js";
@@ -40,6 +42,10 @@ let leads = [];
 // Все обращения к базе заявок
 let leadQueries = [];
 let signupDisabled = false;
+
+// Коды восстановления: почта -> код. В настоящем Supabase код приходит письмом.
+const RECOVERY_CODE = "12345678";
+const recoveryCodes = new Map();
 
 // Каталог услуг: цены и признак «от».
 const services = [
@@ -96,13 +102,14 @@ globalThis.fetch = async (url, options = {}) => {
     users.set(body.email, {
       id,
       password: body.password,
-      meta: { name: body.data?.name || "", phone: "", avatar: "" }
+      // Имя и телефон приходят из регистрации: в кабинете их уже не спрашиваем.
+      meta: { name: body.data?.name || "", phone: body.data?.phone || "", avatar: "" }
     });
 
     return new Response(JSON.stringify({
       access_token: `${TOKEN_PREFIX}${id}`,
       expires_in: 3600,
-      user: { id, email: body.email, user_metadata: { name: body.data?.name || "" } }
+      user: { id, email: body.email, user_metadata: { ...users.get(body.email).meta } }
     }), { status: 200 });
   }
 
@@ -131,6 +138,12 @@ globalThis.fetch = async (url, options = {}) => {
       return new Response(JSON.stringify({ message: "invalid token" }), { status: 401 });
     }
 
+    // При смене пароля в теле только password: профиль при этом не трогаем.
+    if (typeof body.password === "string") {
+      record[1].password = body.password;
+      return new Response(JSON.stringify({ id, email: record[0] }), { status: 200 });
+    }
+
     record[1].meta = { ...body.data };
     return new Response(JSON.stringify({
       id,
@@ -157,6 +170,31 @@ globalThis.fetch = async (url, options = {}) => {
 
   if (target.includes("/auth/v1/logout")) {
     return new Response("{}", { status: 204 });
+  }
+
+  // --- Восстановление пароля ---
+  if (target.includes("/auth/v1/recover")) {
+    // Supabase отправляет письмо с кодом; для теста код всегда один.
+    recoveryCodes.set(body.email, RECOVERY_CODE);
+    return new Response(JSON.stringify({}), { status: 200 });
+  }
+
+  if (target.includes("/auth/v1/verify")) {
+    if (body.type !== "recovery" || body.token !== recoveryCodes.get(body.email)) {
+      return new Response(JSON.stringify({ msg: "Token has expired or is invalid" }), { status: 403 });
+    }
+
+    const record = users.get(body.email);
+
+    if (!record) {
+      return new Response(JSON.stringify({ msg: "User not found" }), { status: 404 });
+    }
+
+    return new Response(JSON.stringify({
+      access_token: `${TOKEN_PREFIX}${record.id}`,
+      expires_in: 3600,
+      user: { id: record.id, email: body.email }
+    }), { status: 200 });
   }
 
   // --- Таблица leads ---
@@ -234,8 +272,8 @@ async function setProfile(token, { name, phone, avatar }) {
 }
 
 /** Регистрирует пользователя через боевую функцию и возвращает токен. */
-async function registerUser(email, password, name) {
-  const response = await register({ request: post({ email, password, name }), env: ENV });
+async function registerUser(email, password, name = "Клиент", phone = "+7 (900) 123-45-67") {
+  const response = await register({ request: post({ email, password, name, phone }), env: ENV });
   const payload = await response.json();
   return payload;
 }
@@ -464,6 +502,17 @@ await test("без заполненного профиля заявка не с�
   reset();
   const { token } = await registerUser("empty@example.com", "secret123");
 
+  // Имя и телефон теперь приходят при регистрации. Проверяем защиту на случай,
+  // если профиль всё же пуст: очищаем его через боевую функцию профиля.
+  await profileApi({
+    request: new Request("https://x/api/me/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...withToken(token) },
+      body: JSON.stringify({ name: "", phone: "" })
+    }),
+    env: ENV
+  });
+
   const response = await accountLeads({
     request: new Request("https://x/api/me/leads", {
       method: "POST",
@@ -477,6 +526,86 @@ await test("без заполненного профиля заявка не с�
   assert.equal(response.status, 409);
   assert.equal(payload.needsProfile, true, "клиенту нужно предложить заполнить профиль");
   assert.equal(leads.length, 0, "в базу ничего не должно попасть");
+});
+
+await test("регистрация требует имя и телефон", async () => {
+  reset();
+
+  const withoutName = await register({ request: post({ email: "n@example.com", password: "secret123", phone: "+7 (900) 123-45-67" }), env: ENV });
+  const namePayload = await withoutName.json();
+  assert.equal(withoutName.status, 400);
+  assert.match(namePayload.error, /имя/i);
+
+  const withoutPhone = await register({ request: post({ email: "p@example.com", password: "secret123", name: "Иван" }), env: ENV });
+  const phonePayload = await withoutPhone.json();
+  assert.equal(withoutPhone.status, 400);
+  assert.match(phonePayload.error, /телефон/i);
+
+  assert.equal(users.size, 0, "неверные данные не должны создавать аккаунт");
+});
+
+await test("имя и телефон из регистрации попадают в профиль", async () => {
+  reset();
+  const { token } = await registerUser("profile@example.com", "secret123", "Мария", "8 (912) 345-67-89");
+
+  const response = await accountLeads({ request: get(withToken(token)), env: ENV });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.profile.name, "Мария");
+  assert.equal(payload.profile.phone, "+7 (912) 345-67-89", "телефон должен быть приведён к общему виду");
+});
+
+await test("запрос восстановления отправляет код и не раскрывает наличие почты", async () => {
+  reset();
+  await registerUser("recover@example.com", "secret123");
+
+  const existing = await recover({ request: post({ email: "recover@example.com" }), env: ENV });
+  const existingPayload = await existing.json();
+  assert.equal(existing.status, 200);
+  assert.equal(existingPayload.ok, true);
+
+  const unknown = await recover({ request: post({ email: "nobody@example.com" }), env: ENV });
+  const unknownPayload = await unknown.json();
+  assert.equal(unknown.status, 200, "ответ не должен выдавать, есть ли аккаунт");
+  assert.equal(unknownPayload.ok, true);
+});
+
+await test("неверный код не меняет пароль", async () => {
+  reset();
+  await registerUser("wrongcode@example.com", "secret123");
+
+  const response = await recoverVerify({
+    request: post({ email: "wrongcode@example.com", code: "00000000", password: "newsecret123" }),
+    env: ENV
+  });
+
+  assert.equal(response.status, 401);
+  assert.equal(users.get("wrongcode@example.com").password, "secret123", "пароль должен остаться прежним");
+});
+
+await test("верный код меняет пароль, старый больше не подходит", async () => {
+  reset();
+  await registerUser("change@example.com", "secret123");
+
+  await recover({ request: post({ email: "change@example.com" }), env: ENV });
+
+  const response = await recoverVerify({
+    request: post({ email: "change@example.com", code: RECOVERY_CODE, password: "newsecret123" }),
+    env: ENV
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  // Старый пароль больше не принимается.
+  const oldLogin = await login({ request: post({ email: "change@example.com", password: "secret123" }), env: ENV });
+  assert.equal(oldLogin.status, 401);
+
+  // Новый — работает.
+  const newLogin = await login({ request: post({ email: "change@example.com", password: "newsecret123" }), env: ENV });
+  assert.equal(newLogin.status, 200);
 });
 
 await test("имя и телефон берутся из профиля, а не из тела запроса", async () => {

@@ -408,6 +408,21 @@
     .modal__status[data-kind="error"] { color: #FF6B6B; }
     .modal__status[data-kind="ok"] { color: var(--accent); }
 
+    /* Скрытые части окна: у вкладок своё отображение, поэтому hidden
+       нужно усилить явным правилом. */
+    .modal__tabs[hidden],
+    .modal__form[hidden],
+    .modal__hint[hidden] { display: none; }
+
+    /* Сообщение после регистрации */
+    .modal__sent { margin-top: 6px; text-align: center; }
+    .modal__sent[hidden] { display: none; }
+    .modal__sent p { margin: 0 0 10px; color: var(--text-secondary); font-size: 15px; line-height: 1.5; }
+    .modal__sent b { color: var(--text-primary); word-break: break-all; }
+    .modal__sent-note { color: var(--text-muted) !important; font-size: 14px !important; }
+    .modal__sent-icon { font-size: 40px; line-height: 1; margin-bottom: 12px; }
+    .modal__dot { color: var(--text-muted); margin: 0 6px; }
+
     .modal__hint { margin: 14px 0 0; text-align: center; font-size: 13px; }
     .modal__hint a { color: var(--text-muted); text-decoration: none; }
     .modal__hint a:hover { color: var(--accent); }
@@ -1541,6 +1556,11 @@
           <input id="siteName" type="text" maxlength="100" placeholder="Иван" autocomplete="name" />
         </div>
 
+        <div class="modal__field" id="sitePhoneField" hidden>
+          <label for="sitePhone">Телефон</label>
+          <input id="sitePhone" type="tel" maxlength="20" placeholder="+7 (999) 123-45-67" autocomplete="tel" />
+        </div>
+
         <div class="modal__field">
           <label for="siteEmail">Почта</label>
           <input id="siteEmail" type="email" required placeholder="you@example.com" autocomplete="email" />
@@ -1551,11 +1571,29 @@
           <input id="sitePassword" type="password" required minlength="6" placeholder="минимум 6 символов" autocomplete="current-password" />
         </div>
 
+        <div class="modal__field" id="sitePassword2Field" hidden>
+          <label for="sitePassword2">Повторите пароль</label>
+          <input id="sitePassword2" type="password" placeholder="ещё раз" autocomplete="new-password" />
+        </div>
+
         <button type="submit" class="btn btn-primary modal__submit" id="siteAuthSubmit">Войти</button>
       </form>
 
       <p class="modal__status" id="siteAuthStatus"></p>
-      <p class="modal__hint"><a href="/account/">Открыть личный кабинет</a></p>
+
+      <p class="modal__hint" id="siteForgotRow">
+        <a href="/account/?recover=1">Забыли пароль?</a>
+        <span class="modal__dot">·</span>
+        <a href="/account/">Открыть личный кабинет</a>
+      </p>
+
+      <!-- Показывается вместо формы после регистрации -->
+      <div class="modal__sent" id="siteSentView" hidden>
+        <div class="modal__sent-icon">✉️</div>
+        <p>Письмо с подтверждением о регистрации отправлено на почту <b id="siteSentEmail"></b>.</p>
+        <p class="modal__sent-note">Эту страницу можно закрыть.</p>
+        <button type="button" class="btn btn-primary modal__submit" data-close-login>Закрыть</button>
+      </div>
     </div>
   </div>
 
@@ -2192,25 +2230,60 @@
 
     let siteAuthMode = "login";
 
+    const sitePhoneField = document.getElementById("sitePhoneField");
+    const sitePassword2Field = document.getElementById("sitePassword2Field");
+    const siteForgotRow = document.getElementById("siteForgotRow");
+    const siteSentView = document.getElementById("siteSentView");
+    const siteTabs = loginModal.querySelector(".modal__tabs");
+
     function setAuthMode(next) {
       siteAuthMode = next;
       const isLogin = next === "login";
 
       loginTab.dataset.active = String(isLogin);
       registerTab.dataset.active = String(!isLogin);
+
+      // При регистрации спрашиваем имя, телефон и пароль дважды.
       siteNameField.hidden = isLogin;
+      sitePhoneField.hidden = isLogin;
+      sitePassword2Field.hidden = isLogin;
+      siteForgotRow.hidden = !isLogin;
+
+      document.getElementById("siteName").required = !isLogin;
+      document.getElementById("sitePhone").required = !isLogin;
+      document.getElementById("sitePassword2").required = !isLogin;
+
       siteAuthSubmit.textContent = isLogin ? "Войти" : "Зарегистрироваться";
       document.getElementById("loginTitle").textContent = isLogin ? "Вход" : "Регистрация";
       document.getElementById("loginSub").textContent = isLogin
         ? "Войдите, чтобы заявки уходили сразу, без имени и телефона."
-        : "Создайте профиль — заявки будут привязаны к вам.";
+        : "Создайте профиль: имя и телефон сохранятся, и в кабинете их не придётся вводить снова.";
 
       siteAuthStatus.textContent = "";
       siteAuthStatus.removeAttribute("data-kind");
     }
 
-    function openLoginModal() {
+    /** Возвращает окно к обычной форме входа. */
+    function resetSiteModal() {
+      siteAuthForm.hidden = false;
+      siteTabs.hidden = false;
+      siteForgotRow.hidden = false;
+      siteSentView.hidden = true;
       setAuthMode("login");
+    }
+
+    /** Показывает сообщение вместо формы после регистрации. */
+    function showSiteSentView(email) {
+      siteAuthForm.hidden = true;
+      siteTabs.hidden = true;
+      siteForgotRow.hidden = true;
+      siteAuthStatus.textContent = "";
+      siteSentView.hidden = false;
+      document.getElementById("siteSentEmail").textContent = email;
+    }
+
+    function openLoginModal() {
+      resetSiteModal();
       loginModal.hidden = false;
       document.body.style.overflow = "hidden";
       document.getElementById("siteEmail").focus();
@@ -2236,56 +2309,87 @@
       });
 
       siteAuthForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
+      event.preventDefault();
 
-        const email = document.getElementById("siteEmail").value.trim();
-        const password = document.getElementById("sitePassword").value;
-        const name = document.getElementById("siteName").value.trim();
+      const email = document.getElementById("siteEmail").value.trim();
+      const password = document.getElementById("sitePassword").value;
+      const name = document.getElementById("siteName").value.trim();
+      const phone = document.getElementById("sitePhone").value.trim();
+      const password2 = document.getElementById("sitePassword2").value;
 
-        siteAuthSubmit.disabled = true;
-        siteAuthStatus.textContent = "Проверяем…";
-        siteAuthStatus.removeAttribute("data-kind");
-
-        try {
-          const path = siteAuthMode === "login" ? "/api/auth/login" : "/api/auth/register";
-          const body = siteAuthMode === "login" ? { email, password } : { email, password, name };
-
-          const response = await fetch(path, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-          });
-
-          const payload = await response.json().catch(() => ({}));
-
-          if (!response.ok || !payload.ok) {
-            siteAuthStatus.textContent = payload.error || "Не удалось выполнить вход.";
-            siteAuthStatus.dataset.kind = "error";
-            return;
-          }
-
-          if (payload.needsConfirmation) {
-            siteAuthStatus.textContent = payload.message || "Подтвердите почту и войдите.";
-            siteAuthStatus.dataset.kind = "ok";
-            return;
-          }
-
-          localStorage.setItem(CLIENT_TOKEN_KEY, payload.token);
-          sessionStorage.setItem("itd_client_seen", "1");
-
-          // Обновляем страницу: так форма сразу станет короткой, а в шапке
-          // появится профиль клиента.
-          siteAuthStatus.textContent = "Готово! Обновляем страницу…";
-          siteAuthStatus.dataset.kind = "ok";
-          window.location.reload();
-        } catch {
-          siteAuthStatus.textContent = "Сеть недоступна. Попробуйте ещё раз.";
+      // Регистрация: проверяем поля до запроса, чтобы клиент сразу видел причину.
+      if (siteAuthMode === "register") {
+        if (name.length < 2) {
+          siteAuthStatus.textContent = "Укажите имя — как к вам обращаться.";
           siteAuthStatus.dataset.kind = "error";
-        } finally {
-          siteAuthSubmit.disabled = false;
+          return;
         }
-      });
-    }
+
+        const digits = phone.replace(/\D/g, "");
+        if (digits.length !== 10 && digits.length !== 11) {
+          siteAuthStatus.textContent = "Укажите телефон в формате +7 (999) 123-45-67.";
+          siteAuthStatus.dataset.kind = "error";
+          return;
+        }
+
+        if (password.length < 6) {
+          siteAuthStatus.textContent = "Пароль должен быть не короче 6 символов.";
+          siteAuthStatus.dataset.kind = "error";
+          return;
+        }
+
+        if (password !== password2) {
+          siteAuthStatus.textContent = "Пароли не совпадают.";
+          siteAuthStatus.dataset.kind = "error";
+          return;
+        }
+      }
+
+      siteAuthSubmit.disabled = true;
+      siteAuthStatus.textContent = "Проверяем…";
+      siteAuthStatus.removeAttribute("data-kind");
+
+      try {
+        const path = siteAuthMode === "login" ? "/api/auth/login" : "/api/auth/register";
+        const body = siteAuthMode === "login"
+          ? { email, password }
+          : { email, password, name, phone };
+
+        const response = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok || !payload.ok) {
+          siteAuthStatus.textContent = payload.error || "Не удалось выполнить запрос.";
+          siteAuthStatus.dataset.kind = "error";
+          return;
+        }
+
+        if (payload.needsConfirmation) {
+          // Форму убираем: остаётся сообщение, что письмо отправлено.
+          showSiteSentView(email);
+          return;
+        }
+
+        localStorage.setItem(CLIENT_TOKEN_KEY, payload.token);
+        sessionStorage.setItem("itd_client_seen", "1");
+
+        // Обновляем страницу: в шапке появится профиль клиента.
+        siteAuthStatus.textContent = "Готово! Обновляем страницу…";
+        siteAuthStatus.dataset.kind = "ok";
+        window.location.reload();
+      } catch {
+        siteAuthStatus.textContent = "Сеть недоступна. Попробуйте ещё раз.";
+        siteAuthStatus.dataset.kind = "error";
+      } finally {
+        siteAuthSubmit.disabled = false;
+      }
+    });
+  }
 
     async function loadClientProfile() {
       // Пока не знаем, вошёл ли клиент, не показываем ни кнопку входа, ни профиль.

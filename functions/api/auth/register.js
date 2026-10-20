@@ -4,7 +4,7 @@
 // мы его не сохраняем и не логируем. В ответ клиент получает токен, с которым
 // дальше открывает личный кабинет.
 
-import { authErrorMessage, isValidEmail, json, normalizeEmail, supabaseAuth } from "../_lib/auth.js";
+import { authErrorMessage, isValidEmail, json, normalizeEmail, normalizePhone, supabaseAuth } from "../_lib/auth.js";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -44,8 +44,18 @@ export async function onRequest({ request, env }) {
     return json(400, { ok: false, error: "Пароль слишком длинный." });
   }
 
-  // Имя необязательно: если клиент его указал, сохраним в профиле.
+  // Имя и телефон спрашиваем при регистрации и сразу сохраняем в профиле:
+  // тогда в кабинете не придётся заполнять их повторно.
   const name = String(payload.name || "").trim().slice(0, 100);
+  const phone = normalizePhone(payload.phone);
+
+  if (name.length < 2) {
+    return json(400, { ok: false, error: "Укажите имя — как к вам обращаться." });
+  }
+
+  if (!phone) {
+    return json(400, { ok: false, error: "Укажите корректный номер телефона." });
+  }
 
   try {
     const response = await supabaseAuth(env, "/signup", {
@@ -53,7 +63,8 @@ export async function onRequest({ request, env }) {
       body: JSON.stringify({
         email,
         password,
-        data: name ? { name } : undefined
+        // Телефон храним в том же виде, что и в профиле кабинета.
+        data: { name, phone }
       })
     });
 

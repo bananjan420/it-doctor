@@ -64,6 +64,43 @@
     button.primary { background: var(--accent-gradient); border: none; color: #04121A; font-weight: 700; box-shadow: var(--shadow-accent); }
 
     /* Возврат на сайт из формы входа */
+    /* --- Ссылки внутри формы входа --- */
+    .auth-link {
+      margin: 12px 0 0;
+      text-align: center;
+    }
+
+    .auth-link button,
+    .auth-back {
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 14px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .auth-link button:hover,
+    .auth-back:hover { color: var(--accent); }
+
+    /* --- Экран «письмо отправлено» --- */
+    #sentView {
+      padding: 26px 8px 18px;
+      text-align: center;
+    }
+
+    .sent-icon {
+      font-size: 46px;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+
+    #sentView .sub { margin-bottom: 10px; }
+
     .back-to-site {
       display: flex;
       align-items: center;
@@ -420,38 +457,115 @@
 
   <!-- Вход и регистрация -->
   <section class="card hidden" id="authView">
-    <h1>Личный <span>кабинет</span></h1>
-    <p class="sub">Войдите, чтобы видеть свои заявки и их статусы.</p>
+    <!-- Вход и регистрация -->
+    <div id="authPanel">
+      <h1>Личный <span>кабинет</span></h1>
+      <p class="sub" id="authSub">Войдите, чтобы видеть свои заявки и их статусы.</p>
 
-    <div class="tabs">
-      <button type="button" id="tabLogin" data-active="true">Вход</button>
-      <button type="button" id="tabRegister" data-active="false">Регистрация</button>
+      <div class="tabs" id="authTabs">
+        <button type="button" id="tabLogin" data-active="true">Вход</button>
+        <button type="button" id="tabRegister" data-active="false">Регистрация</button>
+      </div>
+
+      <form id="authForm">
+        <div class="field hidden" id="nameField">
+          <label for="regName">Как к вам обращаться</label>
+          <input id="regName" type="text" maxlength="100" placeholder="Иван" autocomplete="name" />
+        </div>
+
+        <div class="field hidden" id="phoneField">
+          <label for="regPhone">Телефон</label>
+          <input id="regPhone" type="tel" maxlength="20" placeholder="+7 (999) 123-45-67" autocomplete="tel" />
+        </div>
+
+        <div class="field">
+          <label for="email">Почта</label>
+          <input id="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+        </div>
+
+        <div class="field">
+          <label for="password">Пароль</label>
+          <input id="password" type="password" required minlength="6" placeholder="минимум 6 символов" autocomplete="current-password" />
+        </div>
+
+        <div class="field hidden" id="password2Field">
+          <label for="password2">Повторите пароль</label>
+          <input id="password2" type="password" placeholder="ещё раз" autocomplete="new-password" />
+        </div>
+
+        <button class="primary" type="submit" id="submitBtn" style="width:100%">Войти</button>
+
+        <p class="auth-link" id="forgotRow">
+          <button type="button" id="forgotBtn">Забыли пароль?</button>
+        </p>
+
+        <a class="back-to-site" href="/">
+          <span>←</span>
+          Вернуться на сайт
+        </a>
+      </form>
+
+      <div class="notice" id="authNotice"></div>
     </div>
 
-    <form id="authForm">
-      <div class="field hidden" id="nameField">
-        <label for="regName">Как к вам обращаться</label>
-        <input id="regName" type="text" maxlength="100" placeholder="Иван" autocomplete="name" />
-      </div>
+    <!-- Восстановление: запрос кода -->
+    <form id="recoverForm" class="hidden">
+      <h1>Восстановление <span>пароля</span></h1>
+      <p class="sub">Укажите почту, на которую зарегистрирован аккаунт. Пришлём код для смены пароля.</p>
 
       <div class="field">
-        <label for="email">Почта</label>
-        <input id="email" type="email" required placeholder="you@example.com" autocomplete="email" />
+        <label for="recoverEmail">Почта</label>
+        <input id="recoverEmail" type="email" required placeholder="you@example.com" autocomplete="email" />
       </div>
 
-      <div class="field">
-        <label for="password">Пароль</label>
-        <input id="password" type="password" required minlength="6" placeholder="минимум 6 символов" autocomplete="current-password" />
-      </div>
+      <button class="primary" type="submit" id="recoverSubmit" style="width:100%">Отправить код</button>
 
-      <button class="primary" type="submit" id="submitBtn" style="width:100%">Войти</button>
-      <a class="back-to-site" href="/">
-        <span>←</span>
-        Вернуться на сайт
-      </a>
+      <p class="auth-link">
+        <button type="button" class="auth-back" data-back-to-login>← Вернуться ко входу</button>
+      </p>
+
+      <div class="notice" id="recoverNotice"></div>
     </form>
 
-    <div class="notice" id="authNotice"></div>
+    <!-- Восстановление: код и новый пароль -->
+    <form id="recoverVerifyForm" class="hidden">
+      <h1>Новый <span>пароль</span></h1>
+      <p class="sub">Код отправлен на <b id="recoverEmailLabel"></b>. Введите его и задайте новый пароль.</p>
+
+      <div class="field">
+        <label for="recoverCode">Код из письма</label>
+        <input id="recoverCode" type="text" inputmode="numeric" maxlength="10" placeholder="12345678" autocomplete="one-time-code" required />
+      </div>
+
+      <div class="field">
+        <label for="recoverPassword">Новый пароль</label>
+        <input id="recoverPassword" type="password" minlength="6" required placeholder="минимум 6 символов" autocomplete="new-password" />
+      </div>
+
+      <div class="field">
+        <label for="recoverPassword2">Повторите пароль</label>
+        <input id="recoverPassword2" type="password" minlength="6" required placeholder="ещё раз" autocomplete="new-password" />
+      </div>
+
+      <button class="primary" type="submit" id="recoverSaveBtn" style="width:100%">Сохранить пароль</button>
+
+      <p class="auth-link">
+        <button type="button" class="auth-back" data-back-to-login>← Вернуться ко входу</button>
+      </p>
+
+      <div class="notice" id="recoverVerifyNotice"></div>
+    </form>
+
+    <!-- Письмо отправлено -->
+    <div id="sentView" class="hidden">
+      <div class="sent-icon">✉️</div>
+      <h1>Проверьте <span>почту</span></h1>
+      <p class="sub">
+        Письмо с подтверждением о регистрации отправлено на почту
+        <b id="sentEmail"></b>. Эту страницу можно закрыть.
+      </p>
+      <p class="sub muted">Не пришло? Проверьте папку «Спам».</p>
+    </div>
   </section>
 
   <!-- Кабинет -->
@@ -588,6 +702,8 @@
   </div>
 </div>
 
+<p class="build">версия: <span id="buildStamp">—</span></p>
+
 <!-- Подсказка секретного входа владельца -->
 <div class="owner-toast" id="ownerToast">Открываю админку…</div>
 
@@ -609,6 +725,16 @@
   const submitBtn = $("submitBtn");
   const tabLogin = $("tabLogin");
   const tabRegister = $("tabRegister");
+
+  // Экраны входа: сама форма, восстановление и сообщение об отправке письма.
+  const authPanel = $("authPanel");
+  const authTabs = $("authTabs");
+  const phoneField = $("phoneField");
+  const password2Field = $("password2Field");
+  const forgotRow = $("forgotRow");
+  const recoverForm = $("recoverForm");
+  const recoverVerifyForm = $("recoverVerifyForm");
+  const sentView = $("sentView");
 
   const avatarBtn = $("avatarBtn");
   const avatarMenu = $("avatarMenu");
@@ -708,19 +834,60 @@
 
   // --- Вход и регистрация -------------------------------------------------
 
+  /** Показывает только форму входа. */
+  function showAuthPanel() {
+    authPanel.classList.remove("hidden");
+    recoverForm.classList.add("hidden");
+    recoverVerifyForm.classList.add("hidden");
+    sentView.classList.add("hidden");
+    notify(authNotice, "", "");
+  }
+
   function setMode(next) {
     mode = next;
     const isLogin = next === "login";
+
     tabLogin.dataset.active = String(isLogin);
     tabRegister.dataset.active = String(!isLogin);
+
+    // При регистрации спрашиваем имя, телефон и пароль дважды.
     nameField.classList.toggle("hidden", isLogin);
+    phoneField.classList.toggle("hidden", isLogin);
+    password2Field.classList.toggle("hidden", isLogin);
+    forgotRow.classList.toggle("hidden", !isLogin);
+
+    // Обязательность полей переключаем вместе с видимостью.
+    $("regName").required = !isLogin;
+    $("regPhone").required = !isLogin;
+    $("password2").required = !isLogin;
+
     submitBtn.textContent = isLogin ? "Войти" : "Зарегистрироваться";
     $("password").autocomplete = isLogin ? "current-password" : "new-password";
+    $("authSub").textContent = isLogin
+      ? "Войдите, чтобы видеть свои заявки и их статусы."
+      : "Создайте профиль: имя и телефон сохранятся, и в кабинете их не придётся вводить снова.";
+
     notify(authNotice, "", "");
   }
 
   tabLogin.addEventListener("click", () => setMode("login"));
   tabRegister.addEventListener("click", () => setMode("register"));
+
+  /** Телефон считается заполненным, если в нём 10 или 11 цифр. */
+  function isPhoneFilled(value) {
+    const digits = String(value || "").replace(/\D/g, "");
+    return digits.length === 10 || digits.length === 11;
+  }
+
+  /** Экран «письмо отправлено»: форму убираем совсем. */
+  function showSentView(email) {
+    authPanel.classList.add("hidden");
+    recoverForm.classList.add("hidden");
+    recoverVerifyForm.classList.add("hidden");
+    sentView.classList.remove("hidden");
+    $("sentEmail").textContent = email;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -729,45 +896,195 @@
 
     const email = $("email").value.trim();
     const password = $("password").value;
-    const name = $("regName").value.trim();
 
     try {
-      const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-      const body = mode === "login" ? { email, password } : { email, password, name };
-      const { payload } = await api(path, { method: "POST", body });
+      if (mode === "login") {
+        const { payload } = await api("/api/auth/login", { method: "POST", body: { email, password } });
+
+        if (!payload.ok) {
+          notify(authNotice, payload.error || "Не удалось выполнить вход.", "error");
+          return;
+        }
+
+        setToken(payload.token);
+        await openCabinet();
+        return;
+      }
+
+      // Регистрация.
+      const name = $("regName").value.trim();
+      const phone = $("regPhone").value.trim();
+      const password2 = $("password2").value;
+
+      if (name.length < 2) {
+        notify(authNotice, "Укажите имя — как к вам обращаться.", "error");
+        $("regName").focus();
+        return;
+      }
+
+      if (!isPhoneFilled(phone)) {
+        notify(authNotice, "Укажите телефон в формате +7 (999) 123-45-67.", "error");
+        $("regPhone").focus();
+        return;
+      }
+
+      if (password.length < 6) {
+        notify(authNotice, "Пароль должен быть не короче 6 символов.", "error");
+        $("password").focus();
+        return;
+      }
+
+      if (password !== password2) {
+        notify(authNotice, "Пароли не совпадают.", "error");
+        $("password2").focus();
+        return;
+      }
+
+      const { payload } = await api("/api/auth/register", {
+        method: "POST",
+        body: { email, password, name, phone }
+      });
 
       if (!payload.ok) {
-        notify(authNotice, payload.error || "Не удалось выполнить запрос.", "error");
+        notify(authNotice, payload.error || "Не удалось зарегистрироваться.", "error");
         return;
       }
 
       if (payload.needsConfirmation) {
-        notify(authNotice, payload.message || "Подтвердите почту и войдите.", "ok");
+        showSentView(email);
         return;
       }
 
       setToken(payload.token);
       await openCabinet();
-
-      // Если владелец пришёл по ссылке «личные данные» без входа,
-      // нужное окно откроется сразу после авторизации.
-      const pendingWindow = sessionStorage.getItem("itd_open_after_login");
-
-      if (pendingWindow) {
-        sessionStorage.removeItem("itd_open_after_login");
-
-        if (pendingWindow === "profile") {
-          notify(profileNotice, "", "");
-          pendingAvatar = null;
-          openModal(profileModal);
-        } else {
-          startNewLead();
-        }
-      }
     } catch {
       notify(authNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
     } finally {
       submitBtn.disabled = false;
+    }
+  });
+
+  // --- Восстановление пароля ----------------------------------------------
+
+  /** Форма запроса кода на почту. */
+  function showRecover() {
+    authPanel.classList.add("hidden");
+    sentView.classList.add("hidden");
+    recoverVerifyForm.classList.add("hidden");
+    recoverForm.classList.remove("hidden");
+    notify(recoverNotice, "", "");
+    $("recoverEmail").value = $("email").value.trim();
+    $("recoverEmail").focus();
+  }
+
+  /** Форма ввода кода и нового пароля. */
+  function showRecoverVerify(email) {
+    authPanel.classList.add("hidden");
+    recoverForm.classList.add("hidden");
+    sentView.classList.add("hidden");
+    recoverVerifyForm.classList.remove("hidden");
+    $("recoverEmailLabel").textContent = email;
+    notify(recoverVerifyNotice, "", "");
+    $("recoverCode").value = "";
+    $("recoverPassword").value = "";
+    $("recoverPassword2").value = "";
+    $("recoverCode").focus();
+  }
+
+  $("forgotBtn").addEventListener("click", showRecover);
+
+  document.querySelectorAll("[data-back-to-login]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showAuthPanel();
+      setMode("login");
+    });
+  });
+
+  recoverForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = $("recoverEmail").value.trim();
+    notify(recoverNotice, "", "");
+
+    if (!email) {
+      notify(recoverNotice, "Укажите почту.", "error");
+      return;
+    }
+
+    const button = $("recoverSubmit");
+    button.disabled = true;
+
+    try {
+      const { status, payload } = await api("/api/auth/recover", { method: "POST", body: { email } });
+
+      if (status !== 200 || !payload.ok) {
+        notify(recoverNotice, payload.error || "Не удалось отправить код.", "error");
+        return;
+      }
+
+      // Код отправлен: показываем поле ввода.
+      showRecoverVerify(email);
+
+      if (payload.message) {
+        notify(recoverVerifyNotice, payload.message, "ok");
+      }
+    } catch {
+      notify(recoverNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  recoverVerifyForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const email = $("recoverEmailLabel").textContent.trim();
+    const code = $("recoverCode").value.replace(/\s/g, "");
+    const password = $("recoverPassword").value;
+    const password2 = $("recoverPassword2").value;
+
+    notify(recoverVerifyNotice, "", "");
+
+    if (!/^\d{4,10}$/.test(code)) {
+      notify(recoverVerifyNotice, "Введите код из письма.", "error");
+      return;
+    }
+
+    if (password.length < 6) {
+      notify(recoverVerifyNotice, "Пароль должен быть не короче 6 символов.", "error");
+      return;
+    }
+
+    if (password !== password2) {
+      notify(recoverVerifyNotice, "Пароли не совпадают.", "error");
+      return;
+    }
+
+    const button = $("recoverSaveBtn");
+    button.disabled = true;
+
+    try {
+      const { status, payload } = await api("/api/auth/recover-verify", {
+        method: "POST",
+        body: { email, code, password }
+      });
+
+      if (status !== 200 || !payload.ok) {
+        notify(recoverVerifyNotice, payload.error || "Не удалось сменить пароль.", "error");
+        return;
+      }
+
+      // Пароль изменён: возвращаем к входу и подставляем почту.
+      showAuthPanel();
+      setMode("login");
+      $("email").value = email;
+      $("password").value = "";
+      notify(authNotice, payload.message || "Пароль изменён. Войдите с новым паролем.", "ok");
+      $("password").focus();
+    } catch {
+      notify(recoverVerifyNotice, "Сеть недоступна. Попробуйте ещё раз.", "error");
+    } finally {
+      button.disabled = false;
     }
   });
 
@@ -776,6 +1093,15 @@
   function showAuth() {
     cabinet.classList.add("hidden");
     authView.classList.remove("hidden");
+
+    // Возвращаем именно форму входа: восстановление и «письмо отправлено»
+    // не должны оставаться на экране после выхода.
+    authPanel.classList.remove("hidden");
+    recoverForm.classList.add("hidden");
+    recoverVerifyForm.classList.add("hidden");
+    sentView.classList.add("hidden");
+    setMode("login");
+
     closeModal(profileModal);
     closeModal(leadModal);
     avatarMenu.hidden = true;
@@ -1443,10 +1769,12 @@
   const paidReturn = startParams.get("paid") === "1";
   // Возврат после подтверждения почты: ?confirmed=1.
   const confirmedReturn = startParams.get("confirmed") === "1";
+  // Прямая ссылка на восстановление пароля: ?recover=1.
+  const recoverAtStart = startParams.get("recover") === "1";
 
   // Убираем параметры из адреса, чтобы при обновлении страницы окно не
   // открывалось снова.
-  if (openProfileAtStart || openLeadAtStart || paidReturn || confirmedReturn || hashToken) {
+  if (openProfileAtStart || openLeadAtStart || paidReturn || confirmedReturn || hashToken || recoverAtStart) {
     history.replaceState(null, "", window.location.pathname);
   }
 
@@ -1495,6 +1823,9 @@
     });
   } else {
     showAuth();
+
+    // Пришли по ссылке на восстановление — сразу показываем запрос кода.
+    if (recoverAtStart) showRecover();
 
     // Если пришли по ссылке на личные данные, но вход не выполнен —
     // покажем форму входа, а после входа окно откроется само.
